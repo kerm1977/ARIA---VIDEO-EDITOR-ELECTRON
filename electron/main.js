@@ -373,6 +373,18 @@ ipcMain.handle('audio:metadata', async (_, filePath) => {
   })
 })
 
+// Show item in folder
+ipcMain.handle('showItemInFolder', async (_, filePath) => {
+  try {
+    const { shell } = require('electron')
+    shell.showItemInFolder(filePath)
+    return true
+  } catch (error) {
+    console.error('Failed to show item in folder:', error)
+    return false
+  }
+})
+
 // Project data persistence
 const PROJECT_DATA_PATH = path.join(app.getPath('userData'), 'project-data.json')
 

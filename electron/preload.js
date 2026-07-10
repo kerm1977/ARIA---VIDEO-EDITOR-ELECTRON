@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   denoiseVideo: (path, outputPath) => ipcRenderer.invoke('video:denoise', path, outputPath),
   onConversionProgress: (callback) => ipcRenderer.on('conversion-progress', (event, data) => callback(data)),
   saveProjectData: (data) => ipcRenderer.invoke('saveProjectData', data),
-  loadProjectData: () => ipcRenderer.invoke('loadProjectData')
+  loadProjectData: () => ipcRenderer.invoke('loadProjectData'),
+  showItemInFolder: (path) => ipcRenderer.invoke('showItemInFolder', path)
 })

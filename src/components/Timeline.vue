@@ -14,7 +14,7 @@
           <button class="track-btn" @click="$emit('addClip', track.id)"><Plus class="w-4 h-4" /></button>
         </div>
         <div class="track-lane">
-          <div v-for="clip in track.clips" :key="clip.id" class="clip" :class="{ 'audio-clip': track.type === 'audio' }" :style="getClipStyle(clip, duration)" @click="$emit('selectClip', clip)">
+          <div v-for="clip in track.clips" :key="clip.id" class="clip" :class="{ 'audio-clip': track.type === 'audio' }" :style="getClipStyle(clip, duration)" @click="$emit('selectClip', clip)" @contextmenu.prevent="showContextMenu($event, clip)">
             <div class="clip-content">
               <span class="clip-name">{{ getClipName(clip) }}</span>
               <span class="clip-duration">{{ formatTime(clip.end_time - clip.start_time) }}</span>
@@ -29,6 +29,28 @@
       <div class="playhead-knob"></div>
       <div class="playhead-handle"></div>
     </div>
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click="hideContextMenu">
+      <div class="context-menu-item" @click="showClipInfo">Info</div>
+      <div class="context-menu-item" @click="goToFileLocation">Ir a ubicación de archivo</div>
+      <div class="context-menu-item" @click="createProxy">Crear proxy</div>
+    </div>
+    <div v-if="clipInfoModal.visible" class="modal-overlay" @click="hideClipInfo">
+      <div class="modal-content" @click.stop>
+        <h3>Información del Video</h3>
+        <div class="info-grid">
+          <div class="info-item"><span class="info-label">Formato:</span><span class="info-value">{{ clipInfoModal.data?.metadata?.container || 'N/A' }}</span></div>
+          <div class="info-item"><span class="info-label">Codec:</span><span class="info-value">{{ clipInfoModal.data?.metadata?.codec || 'N/A' }}</span></div>
+          <div class="info-item"><span class="info-label">Resolución:</span><span class="info-value">{{ clipInfoModal.data?.metadata?.width || 0 }}x{{ clipInfoModal.data?.metadata?.height || 0 }}</span></div>
+          <div class="info-item"><span class="info-label">FPS:</span><span class="info-value">{{ clipInfoModal.data?.metadata?.fps || 0 }}</span></div>
+          <div class="info-item"><span class="info-label">Bitrate:</span><span class="info-value">{{ formatBitrate(clipInfoModal.data?.metadata?.bitrate || 0) }}</span></div>
+          <div class="info-item"><span class="info-label">Duración:</span><span class="info-value">{{ formatTime(clipInfoModal.data?.metadata?.duration || 0) }}</span></div>
+          <div class="info-item"><span class="info-label">Tamaño:</span><span class="info-value">{{ formatFileSize(clipInfoModal.data?.metadata?.file_size || 0) }}</span></div>
+          <div class="info-item"><span class="info-label">Audio Codec:</span><span class="info-value">{{ clipInfoModal.data?.metadata?.audioCodec || 'N/A' }}</span></div>
+          <div class="info-item"><span class="info-label">Ubicación:</span><span class="info-value">{{ clipInfoModal.data?.original_path || 'N/A' }}</span></div>
+        </div>
+        <button class="modal-close" @click="hideClipInfo">Cerrar</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -42,6 +64,8 @@ const props = defineProps<{ tracks: TimelineTrack[], duration: number, currentTi
 const emit = defineEmits<{ addClip: [trackId: string], selectClip: [clip: VideoClip | any], timeUpdate: [time: number], cutClip: [] }>()
 const playheadPosition = ref(0)
 const isDragging = ref(false)
+const contextMenu = ref({ visible: false, x: 0, y: 0, clip: null as VideoClip | null })
+const clipInfoModal = ref({ visible: false, data: null as VideoClip | null })
 
 const timeMarks = computed(() => {
   const marks = []
@@ -77,6 +101,58 @@ function stopDrag() {
 }
 
 function cutClip() { emit('cutClip') }
+
+function showContextMenu(event: MouseEvent, clip: VideoClip) {
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    clip
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function showClipInfo() {
+  clipInfoModal.value = {
+    visible: true,
+    data: contextMenu.value.clip
+  }
+  hideContextMenu()
+}
+
+function hideClipInfo() {
+  clipInfoModal.value.visible = false
+}
+
+function formatBitrate(bitrate: number): string {
+  if (bitrate >= 1000000) return (bitrate / 1000000).toFixed(2) + ' Mbps'
+  if (bitrate >= 1000) return (bitrate / 1000).toFixed(2) + ' Kbps'
+  return bitrate + ' bps'
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB'
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB'
+  if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' KB'
+  return bytes + ' bytes'
+}
+
+function goToFileLocation() {
+  if (contextMenu.value.clip?.original_path && typeof window !== 'undefined' && window.electronAPI) {
+    window.electronAPI.showItemInFolder(contextMenu.value.clip.original_path)
+  }
+  hideContextMenu()
+}
+
+function createProxy() {
+  if (contextMenu.value.clip) {
+    emit('selectClip', contextMenu.value.clip)
+  }
+  hideContextMenu()
+}
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'KeyX') {
@@ -134,4 +210,16 @@ watch(() => props.currentTime, (time) => {
 .playhead-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: #ef4444; border-radius: 50%; cursor: grab; opacity: 0; transition: opacity 0.2s; border: 2px solid white; box-shadow: 0 0 8px rgba(239, 68, 68, 0.7) }
 .playhead:hover .playhead-handle { opacity: 1 }
 .playhead-handle:active { cursor: grabbing }
+.context-menu { position: fixed; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); z-index: 1000; min-width: 200px; overflow: hidden }
+.context-menu-item { padding: 0.75rem 1rem; cursor: pointer; transition: background 0.2s; color: #ccc; font-size: 0.875rem }
+.context-menu-item:hover { background: #6366f1; color: white }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000 }
+.modal-content { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 2rem; min-width: 500px; max-width: 600px }
+.modal-content h3 { color: white; font-size: 1.25rem; margin-bottom: 1.5rem }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem }
+.info-item { display: flex; flex-direction: column; gap: 0.25rem }
+.info-label { font-size: 0.75rem; color: #888; font-weight: 500 }
+.info-value { font-size: 0.875rem; color: #ccc }
+.modal-close { padding: 0.75rem 1.5rem; background: #6366f1; border: none; border-radius: 6px; color: white; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.2s }
+.modal-close:hover { background: #8b5cf6 }
 </style>

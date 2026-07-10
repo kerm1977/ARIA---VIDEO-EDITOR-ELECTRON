@@ -61,7 +61,10 @@ const isConverting = ref(false)
 
 const isElectron = () => typeof window !== 'undefined' && window.electronAPI
 
-function goBack() { projectStore.setCurrentProject(null) }
+async function goBack() {
+  await projectStore.saveProjectToStorage()
+  projectStore.setCurrentProject(null)
+}
 function saveProxySettings(settings: any) { Object.assign(proxySettings.value, settings); showProxySettings.value = false }
 function handleTimeUpdate(time: number) { currentTime.value = time }
 function handlePlayStateChange(playing: boolean) { isPlaying.value = playing }

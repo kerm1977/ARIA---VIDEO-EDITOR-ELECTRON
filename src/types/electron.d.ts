@@ -18,6 +18,7 @@ export interface ElectronAPI {
   onConversionProgress: (callback: (data: { progress: number, message: string }) => void) => void
   saveProjectData: (data: string) => Promise<boolean>
   loadProjectData: () => Promise<string | null>
+  showItemInFolder: (path: string) => Promise<boolean>
 }
 
 export interface SystemPerformance {

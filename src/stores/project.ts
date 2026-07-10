@@ -247,6 +247,13 @@ export const useProjectStore = defineStore('project', () => {
         updatedProject.modified_at = new Date().toISOString()
       }
       currentProject.value = updatedProject
+      // Update project in projects list
+      const projectIndex = projects.value.findIndex(p => p.id === updatedProject.id)
+      if (projectIndex !== -1) {
+        projects.value[projectIndex] = updatedProject
+      }
+      // Save to storage
+      await saveProjectToStorage()
     } catch (e) {
       error.value = e as string
       throw e
@@ -274,6 +281,14 @@ export const useProjectStore = defineStore('project', () => {
     currentProject.value = project
   }
 
+  function deleteProject(projectId: string) {
+    projects.value = projects.value.filter(p => p.id !== projectId)
+    if (currentProject.value?.id === projectId) {
+      currentProject.value = null
+    }
+    saveProjectToStorage()
+  }
+
   function clearError() {
     error.value = null
   }
@@ -294,6 +309,7 @@ export const useProjectStore = defineStore('project', () => {
     addClipToTrack,
     exportVideo,
     setCurrentProject,
+    deleteProject,
     clearError,
     saveProjectToStorage,
     loadProjectFromStorage,

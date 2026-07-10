@@ -5,7 +5,7 @@
       <button @click="createNewProject" class="new-project-btn"><Plus class="w-5 h-5" />New Project</button>
     </div>
     <div class="projects-container">
-      <div v-for="project in projects" :key="project.id" class="project-card" @click="openProject(project)">
+      <div v-for="project in projects" :key="project.id" class="project-card" @click="openProject(project)" @contextmenu.prevent="showContextMenu($event, project)">
         <div class="project-thumbnail"><Video class="w-12 h-12 text-gray-600" /></div>
         <div class="project-info">
           <h3 class="project-name">{{ project.name }}</h3>
@@ -31,6 +31,9 @@
         </div>
       </div>
     </div>
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click="hideContextMenu">
+      <div class="context-menu-item delete" @click="deleteProject">Delete Project</div>
+    </div>
   </div>
 </template>
 
@@ -45,6 +48,7 @@ const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 const showNewProjectModal = ref(false)
 const newProjectName = ref('Untitled Project')
+const contextMenu = ref({ visible: false, x: 0, y: 0, project: null as any })
 
 function createNewProject() {
   showNewProjectModal.value = true
@@ -64,6 +68,26 @@ function cancelNewProject() {
 }
 
 function openProject(project: any) { projectStore.setCurrentProject(project) }
+
+function showContextMenu(event: MouseEvent, project: any) {
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    project
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function deleteProject() {
+  if (contextMenu.value.project && confirm('Are you sure you want to delete this project?')) {
+    projectStore.deleteProject(contextMenu.value.project.id)
+  }
+  hideContextMenu()
+}
 </script>
 
 <style scoped>
@@ -93,4 +117,8 @@ function openProject(project: any) { projectStore.setCurrentProject(project) }
 .modal-btn.cancel:hover { background: #444 }
 .modal-btn.confirm { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white }
 .modal-btn.confirm:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) }
+.context-menu { position: fixed; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); z-index: 1000; min-width: 200px; overflow: hidden }
+.context-menu-item { padding: 0.75rem 1rem; cursor: pointer; transition: background 0.2s; color: #ccc; font-size: 0.875rem }
+.context-menu-item:hover { background: #6366f1; color: white }
+.context-menu-item.delete:hover { background: #ef4444 }
 </style>

@@ -24,7 +24,7 @@
     <div v-if="showNewProjectModal" class="modal-overlay" @click="cancelNewProject">
       <div class="modal-content" @click.stop>
         <h3 class="modal-title">Nuevo Proyecto</h3>
-        <input ref="projectNameInput" v-model="newProjectName" class="modal-input" placeholder="Nombre del proyecto" @keyup.enter="confirmNewProject" />
+        <input v-model="newProjectName" class="modal-input" placeholder="Nombre del proyecto" autofocus autocomplete="off" @keyup.enter="confirmNewProject" />
         <div class="modal-buttons">
           <button @click="cancelNewProject" class="modal-btn cancel">Cancelar</button>
           <button @click="confirmNewProject" class="modal-btn confirm">Crear</button>
@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import { Plus, Video } from 'lucide-vue-next'
 import { useProjectStore } from '../stores/project'
 import { storeToRefs } from 'pinia'
@@ -48,20 +48,10 @@ const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 const showNewProjectModal = ref(false)
 const newProjectName = ref('')
-const projectNameInput = ref<HTMLInputElement | null>(null)
 const contextMenu = ref({ visible: false, x: 0, y: 0, project: null as any })
 
 function createNewProject() {
   showNewProjectModal.value = true
-  nextTick(() => {
-    projectNameInput.value?.focus()
-  })
-}
-
-function onInputFocus() {
-  if (!newProjectName.value) {
-    newProjectName.value = ''
-  }
 }
 
 function confirmNewProject() {

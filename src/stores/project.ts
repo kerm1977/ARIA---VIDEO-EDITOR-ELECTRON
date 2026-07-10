@@ -91,8 +91,6 @@ export const useProjectStore = defineStore('project', () => {
 
   // Save project to storage
   async function saveProjectToStorage() {
-    if (!currentProject.value) return
-
     try {
       const data = JSON.stringify({
         currentProject: currentProject.value,
@@ -127,7 +125,7 @@ export const useProjectStore = defineStore('project', () => {
 
       if (data) {
         const parsed = JSON.parse(data)
-        if (parsed.currentProject) currentProject.value = parsed.currentProject
+        // Never auto-restore currentProject: app must always open on the projects grid
         if (parsed.projects) projects.value = parsed.projects
         if (parsed.proxySettings) proxySettings.value = parsed.proxySettings
         return true

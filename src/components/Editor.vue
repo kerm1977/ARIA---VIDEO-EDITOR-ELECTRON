@@ -20,11 +20,23 @@
     <div class="timeline-panel"><Timeline :tracks="currentProject?.tracks || []" :duration="currentProject?.duration || 0" :currentTime="currentTime" :isPlaying="isPlaying" @add-clip="showImportModal = true" @select-clip="selectedClip = $event" @timeUpdate="handleTimelineTimeUpdate" @cutClip="handleCutClip" @addMedia="showImportModal = true" /></div>
     <ProxySettingsModal v-if="showProxySettings" :settings="proxySettings" @close="showProxySettings = false" @save="saveProxySettings" />
     <ImportModal v-if="showImportModal" @close="showImportModal = false" @import="handleImport" />
+    <div v-if="isConverting" class="conversion-progress">
+      <div class="progress-overlay">
+        <div class="progress-content">
+          <h3>Converting Video</h3>
+          <p>{{ conversionMessage }}</p>
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: conversionProgress + '%' }"></div>
+          </div>
+          <span class="progress-text">{{ Math.round(conversionProgress) }}%</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ArrowLeft, Upload, Download, Settings } from 'lucide-vue-next'
 import { useProjectStore } from '../stores/project'
 import { storeToRefs } from 'pinia'
@@ -43,6 +55,9 @@ const showImportModal = ref(false)
 const currentTime = ref(0)
 const isPlaying = ref(false)
 const videoPreview = ref<{ seekTo: (time: number) => void } | null>(null)
+const conversionProgress = ref(0)
+const conversionMessage = ref('')
+const isConverting = ref(false)
 
 const isElectron = () => typeof window !== 'undefined' && window.electronAPI
 
@@ -97,6 +112,10 @@ async function processVideoImport(filePath: string) {
 
     if (needsConversion && isElectron()) {
       console.log('Converting video for browser compatibility')
+      isConverting.value = true
+      conversionProgress.value = 0
+      conversionMessage.value = 'Starting conversion...'
+
       const convertSettings = {
         videoCodec: 'h264',
         audioCodec: 'aac',
@@ -104,6 +123,11 @@ async function processVideoImport(filePath: string) {
         audioBitrate: '128k'
       }
       finalPath = await projectStore.convertVideo(filePath, convertSettings)
+
+      isConverting.value = false
+      conversionProgress.value = 100
+      conversionMessage.value = 'Conversion complete'
+
       // Update metadata after conversion
       const newMetadata = await projectStore.getVideoMetadata(finalPath)
       Object.assign(metadata, newMetadata)
@@ -134,6 +158,7 @@ async function processVideoImport(filePath: string) {
     }
   } catch (error) {
     console.error('Failed to import video:', error)
+    isConverting.value = false
     alert('Failed to import video: ' + error)
   }
 }
@@ -267,6 +292,15 @@ function handleProcess() {
   alert('Process tool coming soon')
 }
 
+onMounted(() => {
+  if (isElectron()) {
+    window.electronAPI.onConversionProgress((data) => {
+      conversionProgress.value = data.progress
+      conversionMessage.value = data.message
+    })
+  }
+})
+
 async function handleImport(file: File) {
   const url = URL.createObjectURL(file)
   const mockClip: VideoClip = {
@@ -318,4 +352,12 @@ async function exportProject() {
 .editor-content { flex: 1; display: flex; flex-direction: column; overflow: hidden }
 .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 400px }
 .timeline-panel { height: 300px; border-top: 1px solid #333; flex-shrink: 0; width: 100% }
+.conversion-progress { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000 }
+.progress-overlay { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center }
+.progress-content { background: #1a1a1a; padding: 2rem; border-radius: 12px; border: 1px solid #333; min-width: 400px; text-align: center }
+.progress-content h3 { color: white; font-size: 1.25rem; margin-bottom: 0.5rem }
+.progress-content p { color: #ccc; font-size: 0.875rem; margin-bottom: 1.5rem }
+.progress-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); transition: width 0.3s ease }
+.progress-text { color: white; font-size: 0.875rem; font-weight: 500 }
 </style>

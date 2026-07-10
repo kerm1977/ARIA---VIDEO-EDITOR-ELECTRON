@@ -374,7 +374,7 @@ ipcMain.handle('audio:metadata', async (_, filePath) => {
 })
 
 // Video conversion IPC for format compatibility
-ipcMain.handle('video:convert', async (_, filePath, settings) => {
+ipcMain.handle('video:convert', async (event, filePath, settings) => {
   const dir = path.dirname(filePath)
   const stem = path.basename(filePath, path.extname(filePath))
   const outputPath = path.join(dir, `${stem}_converted.mp4`)
@@ -390,27 +390,59 @@ ipcMain.handle('video:convert', async (_, filePath, settings) => {
       '-b:a', settings.audioBitrate ? settings.audioBitrate.toString() : '128k',
       '-preset', 'fast',
       '-movflags', '+faststart',
+      '-y',
       outputPath
     ]
 
     const ffmpeg = spawn('ffmpeg', args)
     let error = ''
+    let duration = 0
+    let lastProgress = 0
 
     ffmpeg.stderr.on('data', (data) => {
-      error += data
-      // Parse progress from stderr
-      const timeMatch = error.match(/time=(\d+:\d+:\d+\.\d+)/)
-      if (timeMatch && settings.onProgress) {
-        settings.onProgress(timeMatch[1])
+      const output = data.toString()
+      error += output
+
+      // Parse duration from stderr
+      const durationMatch = output.match(/Duration: (\d+):(\d+):(\d+\.\d+)/)
+      if (durationMatch && duration === 0) {
+        const hours = parseInt(durationMatch[1])
+        const mins = parseInt(durationMatch[2])
+        const secs = parseFloat(durationMatch[3])
+        duration = hours * 3600 + mins * 60 + secs
+        console.log('Video duration:', duration, 'seconds')
+      }
+
+      // Parse progress from stderr - look for time= pattern
+      const timeMatch = output.match(/time=(\d+):(\d+):(\d+\.\d+)/)
+      if (timeMatch && duration > 0) {
+        const hours = parseInt(timeMatch[1])
+        const mins = parseInt(timeMatch[2])
+        const secs = parseFloat(timeMatch[3])
+        const currentTime = hours * 3600 + mins * 60 + secs
+        const progress = Math.min((currentTime / duration) * 100, 100)
+
+        // Only send progress if it changed significantly
+        if (progress - lastProgress > 1 || progress === 100) {
+          lastProgress = progress
+          console.log('Conversion progress:', Math.round(progress) + '%')
+          event.sender.send('conversion-progress', { progress, message: `Converting: ${Math.round(progress)}%` })
+        }
       }
     })
 
     ffmpeg.on('close', (code) => {
-      if (code !== 0) return reject(error || 'FFmpeg conversion failed')
+      console.log('FFmpeg closed with code:', code)
+      if (code !== 0) {
+        console.error('FFmpeg error:', error)
+        return reject(error || 'FFmpeg conversion failed')
+      }
+      event.sender.send('conversion-progress', { progress: 100, message: 'Conversion complete' })
       resolve(outputPath)
     })
 
     ffmpeg.on('error', (err) => {
+      console.error('FFmpeg spawn error:', err)
       reject(err.message)
     })
   })

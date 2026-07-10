@@ -310,6 +310,17 @@ onMounted(() => {
       conversionMessage.value = data.message
     })
   }
+
+  // Re-select the first available clip so the preview isn't left empty
+  // when reopening a project that already has clips in the timeline
+  if (!selectedClip.value && currentProject.value) {
+    for (const track of currentProject.value.tracks) {
+      if (track.clips.length > 0) {
+        selectedClip.value = track.clips[0] as VideoClip
+        break
+      }
+    }
+  }
 })
 
 async function handleImport(file: File) {

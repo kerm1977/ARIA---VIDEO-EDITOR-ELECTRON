@@ -3,11 +3,11 @@
     <div class="editor-header">
       <div class="header-left">
         <button class="back-btn" @click="goBack"><ArrowLeft class="w-5 h-5" /></button>
-        <h1 class="project-title">{{ currentProject?.name || 'Untitled' }}</h1>
+        <h1 class="project-title">{{ currentProject?.name || 'Sin título' }}</h1>
       </div>
       <div class="header-center">
-        <button class="header-btn" @click="importVideo"><Upload class="w-5 h-5" />Import</button>
-        <button class="header-btn" @click="exportProject"><Download class="w-5 h-5" />Export</button>
+        <button class="header-btn" @click="importVideo"><Upload class="w-5 h-5" />Importar</button>
+        <button class="header-btn" @click="exportProject"><Download class="w-5 h-5" />Exportar</button>
       </div>
       <div class="header-right">
         <button class="header-btn" @click="showProxySettings = true"><Settings class="w-5 h-5" /></button>
@@ -23,7 +23,7 @@
     <div v-if="isConverting" class="conversion-progress">
       <div class="progress-overlay">
         <div class="progress-content">
-          <h3>Converting Video</h3>
+          <h3>Convirtiendo Video</h3>
           <p>{{ conversionMessage }}</p>
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: conversionProgress + '%' }"></div>

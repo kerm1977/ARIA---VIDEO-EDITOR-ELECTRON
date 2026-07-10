@@ -1,8 +1,8 @@
 <template>
   <div class="project-grid">
     <div class="grid-header">
-      <h2 class="text-2xl font-bold">Drafts</h2>
-      <button @click="createNewProject" class="new-project-btn"><Plus class="w-5 h-5" />New Project</button>
+      <h2 class="text-2xl font-bold">Proyectos</h2>
+      <button @click="createNewProject" class="new-project-btn"><Plus class="w-5 h-5" />Nuevo Proyecto</button>
     </div>
     <div class="projects-container">
       <div v-for="project in projects" :key="project.id" class="project-card" @click="openProject(project)" @contextmenu.prevent="showContextMenu($event, project)">
@@ -16,29 +16,29 @@
       <div class="project-card new-card" @click="createNewProject">
         <div class="project-thumbnail gradient-bg"><Plus class="w-12 h-12 text-white" /></div>
         <div class="project-info">
-          <h3 class="project-name">New Project</h3>
-          <p class="project-meta">Create a new video project</p>
+          <h3 class="project-name">Nuevo Proyecto</h3>
+          <p class="project-meta">Crear un nuevo proyecto de video</p>
         </div>
       </div>
     </div>
     <div v-if="showNewProjectModal" class="modal-overlay" @click="cancelNewProject">
       <div class="modal-content" @click.stop>
-        <h3 class="modal-title">New Project</h3>
-        <input v-model="newProjectName" class="modal-input" placeholder="Project name" @keyup.enter="confirmNewProject" />
+        <h3 class="modal-title">Nuevo Proyecto</h3>
+        <input ref="projectNameInput" v-model="newProjectName" class="modal-input" placeholder="Nombre del proyecto" @focus="onInputFocus" @keyup.enter="confirmNewProject" />
         <div class="modal-buttons">
-          <button @click="cancelNewProject" class="modal-btn cancel">Cancel</button>
-          <button @click="confirmNewProject" class="modal-btn confirm">Create</button>
+          <button @click="cancelNewProject" class="modal-btn cancel">Cancelar</button>
+          <button @click="confirmNewProject" class="modal-btn confirm">Crear</button>
         </div>
       </div>
     </div>
     <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click="hideContextMenu">
-      <div class="context-menu-item delete" @click="deleteProject">Delete Project</div>
+      <div class="context-menu-item delete" @click="deleteProject">Eliminar Proyecto</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { Plus, Video } from 'lucide-vue-next'
 import { useProjectStore } from '../stores/project'
 import { storeToRefs } from 'pinia'
@@ -47,24 +47,33 @@ import { formatTime, formatDate } from '../utils/video'
 const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 const showNewProjectModal = ref(false)
-const newProjectName = ref('Untitled Project')
+const newProjectName = ref('Proyecto sin título')
+const projectNameInput = ref<HTMLInputElement | null>(null)
 const contextMenu = ref({ visible: false, x: 0, y: 0, project: null as any })
 
 function createNewProject() {
   showNewProjectModal.value = true
+  nextTick(() => {
+    projectNameInput.value?.focus()
+    projectNameInput.value?.select()
+  })
+}
+
+function onInputFocus() {
+  newProjectName.value = ''
 }
 
 function confirmNewProject() {
   if (newProjectName.value.trim()) {
     projectStore.createProject(newProjectName.value.trim())
     showNewProjectModal.value = false
-    newProjectName.value = 'Untitled Project'
+    newProjectName.value = 'Proyecto sin título'
   }
 }
 
 function cancelNewProject() {
   showNewProjectModal.value = false
-  newProjectName.value = 'Untitled Project'
+  newProjectName.value = 'Proyecto sin título'
 }
 
 function openProject(project: any) { projectStore.setCurrentProject(project) }
@@ -83,7 +92,7 @@ function hideContextMenu() {
 }
 
 function deleteProject() {
-  if (contextMenu.value.project && confirm('Are you sure you want to delete this project?')) {
+  if (contextMenu.value.project && confirm('¿Estás seguro de que quieres eliminar este proyecto?')) {
     projectStore.deleteProject(contextMenu.value.project.id)
   }
   hideContextMenu()

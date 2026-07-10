@@ -30,7 +30,7 @@
       <div class="playhead-handle"></div>
     </div>
     <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click="hideContextMenu">
-      <div class="context-menu-item" @click="showClipInfo">Info</div>
+      <div class="context-menu-item" @click="showClipInfo">Información</div>
       <div class="context-menu-item" @click="goToFileLocation">Ir a ubicación de archivo</div>
       <div class="context-menu-item" @click="createProxy">Crear proxy</div>
     </div>

@@ -52,21 +52,15 @@ function handleTimeUpdate(time: number) { currentTime.value = time }
 function handlePlayStateChange(playing: boolean) { isPlaying.value = playing }
 function handleTimelineTimeUpdate(time: number) { currentTime.value = time; videoPreview.value?.seekTo(time) }
 async function importVideo() {
-  console.log('importVideo called')
-  console.log('isElectron():', isElectron())
-  console.log('window.electronAPI:', window.electronAPI)
   if (!isElectron()) {
-    console.log('Not in Electron mode, showing import modal')
     showImportModal.value = true
     return
   }
   try {
-    console.log('Opening file dialog')
     const filePath = await window.electronAPI.dialogOpen({
       properties: ['openFile'],
       filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'avi', 'mkv'] }]
     })
-    console.log('File selected:', filePath)
     if (filePath) {
       await processVideoImport(filePath)
     }
@@ -77,14 +71,10 @@ async function importVideo() {
 }
 async function processVideoImport(filePath: string) {
   try {
-    console.log('Importing video:', filePath)
-    console.log('Is Electron:', isElectron())
     const metadata = await projectStore.getVideoMetadata(filePath)
-    console.log('Video metadata:', metadata)
     let proxyPath: string | undefined
     // Only generate proxy if enabled in settings
     if (isElectron() && proxySettings.value.enabled) {
-      console.log('Generating proxy with settings:', proxySettings.value)
       // Convert reactive object to plain object for IPC
       const plainSettings = {
         enabled: proxySettings.value.enabled,
@@ -94,9 +84,6 @@ async function processVideoImport(filePath: string) {
         useGPU: proxySettings.value.useGPU
       }
       proxyPath = await projectStore.generateProxy(filePath, plainSettings)
-      console.log('Proxy generated at:', proxyPath)
-    } else {
-      console.log('Proxy generation disabled or not in Electron mode')
     }
     const clip: VideoClip = {
       id: crypto.randomUUID(),
@@ -108,7 +95,6 @@ async function processVideoImport(filePath: string) {
       in_point: 0,
       out_point: metadata.duration
     }
-    console.log('Created clip:', clip)
     if (currentProject.value) {
       // Ensure a video track exists
       let videoTrack = currentProject.value.tracks.find(t => t.type === 'video')
@@ -119,7 +105,6 @@ async function processVideoImport(filePath: string) {
       }
       await projectStore.addClipToTrack(videoTrack.id, clip)
       selectedClip.value = clip
-      console.log('Selected clip set:', selectedClip.value)
     } else {
       console.error('No current project to add clip to')
     }

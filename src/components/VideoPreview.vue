@@ -46,15 +46,9 @@ const volume = ref(1)
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
-const videoSource = computed(() => {
-  const source = getVideoSource(props.currentClip)
-  console.log('VideoPreview videoSource:', source)
-  console.log('VideoPreview currentClip:', props.currentClip)
-  return source
-})
+const videoSource = computed(() => getVideoSource(props.currentClip))
 
 function onVideoLoaded() {
-  console.log('Video loaded, duration:', videoRef.value?.duration)
   if (videoRef.value) duration.value = videoRef.value.duration || 0
 }
 function onTimeUpdate() { if (videoRef.value) { currentTime.value = videoRef.value.currentTime || 0; emit('timeUpdate', currentTime.value) } }

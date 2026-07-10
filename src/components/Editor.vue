@@ -84,51 +84,68 @@ async function importVideo() {
     showImportModal.value = true
   }
 }
+function needsVideoConversion(filePath: string, metadata: any): boolean {
+  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  const container = metadata.container?.toLowerCase() || ''
+  const audioCodec = metadata.audioCodec?.toLowerCase() || ''
+
+  // Convert MKV to MP4
+  if (ext === 'mkv' || container === 'matroska') return true
+
+  // Convert AC3/EAC3 audio to AAC
+  if (audioCodec === 'ac3' || audioCodec === 'eac3') return true
+
+  // Convert other non-browser formats
+  if (['avi', 'wmv', 'mov'].includes(ext) && !metadata.codec?.includes('h264')) return true
+
+  return false
+}
+
+async function convertVideoIfNeeded(filePath: string, metadata: any): Promise<string> {
+  if (!needsVideoConversion(filePath, metadata) || !isElectron()) {
+    return filePath
+  }
+
+  console.log('Converting video for browser compatibility')
+  isConverting.value = true
+  conversionProgress.value = 0
+  conversionMessage.value = 'Starting conversion...'
+
+  const convertSettings = {
+    videoCodec: 'h264',
+    audioCodec: 'aac',
+    videoBitrate: '2M',
+    audioBitrate: '128k'
+  }
+
+  const convertedPath = await projectStore.convertVideo(filePath, convertSettings)
+
+  isConverting.value = false
+  conversionProgress.value = 100
+  conversionMessage.value = 'Conversion complete'
+
+  return convertedPath
+}
+
+async function ensureVideoTrackExists(): Promise<string> {
+  if (!currentProject.value) throw new Error('No current project')
+
+  let videoTrack = currentProject.value.tracks.find(t => t.type === 'video')
+  if (!videoTrack) {
+    videoTrack = { id: crypto.randomUUID(), name: 'Video 1', type: 'video', clips: [] }
+    const updatedProject = { ...currentProject.value, tracks: [...currentProject.value.tracks, videoTrack] }
+    projectStore.setCurrentProject(updatedProject)
+  }
+  return videoTrack.id
+}
+
 async function processVideoImport(filePath: string) {
   try {
     const metadata = await projectStore.getVideoMetadata(filePath)
-    let finalPath = filePath
-    let needsConversion = false
+    const finalPath = await convertVideoIfNeeded(filePath, metadata)
 
-    // Check if format needs conversion
-    const ext = filePath.split('.').pop()?.toLowerCase() || ''
-    const container = (metadata as any).container?.toLowerCase() || ''
-    const audioCodec = (metadata as any).audioCodec?.toLowerCase() || ''
-
-    // Convert MKV to MP4
-    if (ext === 'mkv' || container === 'matroska') {
-      needsConversion = true
-    }
-
-    // Convert AC3/EAC3 audio to AAC
-    if (audioCodec === 'ac3' || audioCodec === 'eac3') {
-      needsConversion = true
-    }
-
-    // Convert other non-browser formats
-    if (['avi', 'wmv', 'mov'].includes(ext) && !metadata.codec?.includes('h264')) {
-      needsConversion = true
-    }
-
-    if (needsConversion && isElectron()) {
-      console.log('Converting video for browser compatibility')
-      isConverting.value = true
-      conversionProgress.value = 0
-      conversionMessage.value = 'Starting conversion...'
-
-      const convertSettings = {
-        videoCodec: 'h264',
-        audioCodec: 'aac',
-        videoBitrate: '2M',
-        audioBitrate: '128k'
-      }
-      finalPath = await projectStore.convertVideo(filePath, convertSettings)
-
-      isConverting.value = false
-      conversionProgress.value = 100
-      conversionMessage.value = 'Conversion complete'
-
-      // Update metadata after conversion
+    // Update metadata after conversion if path changed
+    if (finalPath !== filePath) {
       const newMetadata = await projectStore.getVideoMetadata(finalPath)
       Object.assign(metadata, newMetadata)
     }
@@ -143,19 +160,10 @@ async function processVideoImport(filePath: string) {
       in_point: 0,
       out_point: metadata.duration
     }
-    if (currentProject.value) {
-      // Ensure a video track exists
-      let videoTrack = currentProject.value.tracks.find(t => t.type === 'video')
-      if (!videoTrack) {
-        videoTrack = { id: crypto.randomUUID(), name: 'Video 1', type: 'video', clips: [] }
-        const updatedProject = { ...currentProject.value, tracks: [...currentProject.value.tracks, videoTrack] }
-        projectStore.setCurrentProject(updatedProject)
-      }
-      await projectStore.addClipToTrack(videoTrack.id, clip)
-      selectedClip.value = clip
-    } else {
-      console.error('No current project to add clip to')
-    }
+
+    const trackId = await ensureVideoTrackExists()
+    await projectStore.addClipToTrack(trackId, clip)
+    selectedClip.value = clip
   } catch (error) {
     console.error('Failed to import video:', error)
     isConverting.value = false

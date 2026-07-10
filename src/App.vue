@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useProjectStore } from './stores/project'
 import { useSystemPerformance } from './hooks/useSystemPerformance'
 import ProjectGrid from './components/ProjectGrid.vue'
@@ -17,8 +17,20 @@ import DebugConsole from './components/DebugConsole.vue'
 const projectStore = useProjectStore()
 const { detectPerformance } = useSystemPerformance()
 
-onMounted(() => {
+onMounted(async () => {
   detectPerformance()
+
+  // Load saved project data
+  await projectStore.loadProjectFromStorage()
+
+  // Start auto-save every 30 seconds
+  projectStore.startAutoSave(30000)
+})
+
+onUnmounted(() => {
+  // Stop auto-save and save final state
+  projectStore.stopAutoSave()
+  projectStore.saveProjectToStorage()
 })
 </script>
 

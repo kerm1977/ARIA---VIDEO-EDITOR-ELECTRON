@@ -373,6 +373,32 @@ ipcMain.handle('audio:metadata', async (_, filePath) => {
   })
 })
 
+// Project data persistence
+const PROJECT_DATA_PATH = path.join(app.getPath('userData'), 'project-data.json')
+
+ipcMain.handle('saveProjectData', async (_, data) => {
+  try {
+    fs.writeFileSync(PROJECT_DATA_PATH, data, 'utf-8')
+    return true
+  } catch (error) {
+    console.error('Failed to save project data:', error)
+    return false
+  }
+})
+
+ipcMain.handle('loadProjectData', async () => {
+  try {
+    if (fs.existsSync(PROJECT_DATA_PATH)) {
+      const data = fs.readFileSync(PROJECT_DATA_PATH, 'utf-8')
+      return data
+    }
+    return null
+  } catch (error) {
+    console.error('Failed to load project data:', error)
+    return null
+  }
+})
+
 // Video conversion IPC for format compatibility
 ipcMain.handle('video:convert', async (event, filePath, settings) => {
   const dir = path.dirname(filePath)

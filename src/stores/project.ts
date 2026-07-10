@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export interface VideoMetadata {
   duration: number
@@ -85,6 +85,79 @@ export const useProjectStore = defineStore('project', () => {
 
   const hasProject = computed(() => currentProject.value !== null)
   const projectDuration = computed(() => currentProject.value?.duration || 0)
+
+  // Auto-save interval
+  let autoSaveInterval: number | null = null
+
+  // Save project to storage
+  async function saveProjectToStorage() {
+    if (!currentProject.value) return
+
+    try {
+      const data = JSON.stringify({
+        currentProject: currentProject.value,
+        projects: projects.value,
+        proxySettings: proxySettings.value
+      })
+
+      if (typeof window !== 'undefined' && window.electronAPI) {
+        // Electron: save to file
+        await window.electronAPI.saveProjectData(data)
+      } else {
+        // Web: save to localStorage
+        localStorage.setItem('aria-video-editor-data', data)
+      }
+    } catch (e) {
+      console.error('Failed to save project:', e)
+    }
+  }
+
+  // Load project from storage
+  async function loadProjectFromStorage() {
+    try {
+      let data: string | null = null
+
+      if (typeof window !== 'undefined' && window.electronAPI) {
+        // Electron: load from file
+        data = await window.electronAPI.loadProjectData()
+      } else {
+        // Web: load from localStorage
+        data = localStorage.getItem('aria-video-editor-data')
+      }
+
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (parsed.currentProject) currentProject.value = parsed.currentProject
+        if (parsed.projects) projects.value = parsed.projects
+        if (parsed.proxySettings) proxySettings.value = parsed.proxySettings
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to load project:', e)
+    }
+    return false
+  }
+
+  // Start auto-save
+  function startAutoSave(intervalMs: number = 30000) {
+    if (autoSaveInterval) clearInterval(autoSaveInterval)
+    autoSaveInterval = window.setInterval(() => {
+      saveProjectToStorage()
+    }, intervalMs)
+  }
+
+  // Stop auto-save
+  function stopAutoSave() {
+    if (autoSaveInterval) {
+      clearInterval(autoSaveInterval)
+      autoSaveInterval = null
+    }
+  }
+
+  // Watch for changes and auto-save
+  watch([currentProject, projects, proxySettings], () => {
+    saveProjectToStorage()
+  }, { deep: true })
 
   async function createProject(name: string) {
     try {
@@ -221,6 +294,10 @@ export const useProjectStore = defineStore('project', () => {
     addClipToTrack,
     exportVideo,
     setCurrentProject,
-    clearError
+    clearError,
+    saveProjectToStorage,
+    loadProjectFromStorage,
+    startAutoSave,
+    stopAutoSave
   }
 })

@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stabilizeVideo: (path, outputPath) => ipcRenderer.invoke('video:stabilize', path, outputPath),
   enhanceVideo: (path, outputPath, settings) => ipcRenderer.invoke('video:enhance', path, outputPath, settings),
   denoiseVideo: (path, outputPath) => ipcRenderer.invoke('video:denoise', path, outputPath),
-  onConversionProgress: (callback) => ipcRenderer.on('conversion-progress', (event, data) => callback(data))
+  onConversionProgress: (callback) => ipcRenderer.on('conversion-progress', (event, data) => callback(data)),
+  saveProjectData: (data) => ipcRenderer.invoke('saveProjectData', data),
+  loadProjectData: () => ipcRenderer.invoke('loadProjectData')
 })

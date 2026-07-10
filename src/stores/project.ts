@@ -11,6 +11,15 @@ export interface VideoMetadata {
   file_size: number
 }
 
+export interface AudioMetadata {
+  duration: number
+  codec: string
+  channels: number
+  sample_rate: number
+  bitrate: number
+  file_size: number
+}
+
 export interface ProxySettings {
   enabled: boolean
   resolution: string
@@ -28,12 +37,24 @@ export interface VideoClip {
   end_time: number
   in_point: number
   out_point: number
+  type?: 'video' | 'audio'
+}
+
+export interface AudioClip {
+  id: string
+  original_path: string
+  metadata: AudioMetadata
+  start_time: number
+  end_time: number
+  in_point: number
+  out_point: number
 }
 
 export interface TimelineTrack {
   id: string
   name: string
-  clips: VideoClip[]
+  type: 'video' | 'audio'
+  clips: (VideoClip | AudioClip)[]
 }
 
 export interface Project {
@@ -52,7 +73,7 @@ export const useProjectStore = defineStore('project', () => {
   const error = ref<string | null>(null)
 
   const proxySettings = ref<ProxySettings>({
-    enabled: true,
+    enabled: false,
     resolution: '1280:720',
     codec: 'libx264',
     bitrate: '2M',
@@ -94,6 +115,15 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function getAudioMetadata(path: string): Promise<AudioMetadata> {
+    try {
+      return await window.electronAPI.getAudioMetadata(path)
+    } catch (e) {
+      error.value = e as string
+      throw e
+    }
+  }
+
   async function generateProxy(path: string, settings: ProxySettings): Promise<string> {
     try {
       isLoading.value = true
@@ -107,9 +137,9 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function addClipToTrack(trackId: string, clip: VideoClip) {
+  async function addClipToTrack(trackId: string, clip: VideoClip | any) {
     if (!currentProject.value) return
-    
+
     try {
       isLoading.value = true
       error.value = null
@@ -117,7 +147,14 @@ export const useProjectStore = defineStore('project', () => {
       const track = updatedProject.tracks.find(t => t.id === trackId)
       if (track) {
         track.clips.push(clip)
-        updatedProject.duration = track.clips.reduce((sum, c) => sum + (c.end_time - c.start_time), 0)
+        // Calculate project duration as the maximum end time across all clips
+        let maxEnd = 0
+        updatedProject.tracks.forEach(t => {
+          t.clips.forEach(c => {
+            if (c.end_time > maxEnd) maxEnd = c.end_time
+          })
+        })
+        updatedProject.duration = maxEnd
         updatedProject.modified_at = new Date().toISOString()
       }
       currentProject.value = updatedProject
@@ -162,6 +199,7 @@ export const useProjectStore = defineStore('project', () => {
     projectDuration,
     createProject,
     getVideoMetadata,
+    getAudioMetadata,
     generateProxy,
     addClipToTrack,
     exportVideo,

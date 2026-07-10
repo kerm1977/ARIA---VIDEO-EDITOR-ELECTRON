@@ -7,16 +7,16 @@
       </div>
       <video v-else ref="videoRef" :src="videoSource" class="video-player" @play="onPlay" @pause="onPause" @ended="onPause" @loadedmetadata="onVideoLoaded" @timeupdate="onTimeUpdate" @error="onVideoError" @contextmenu.prevent="showContextMenu" @click="togglePlay" tabindex="0" />
     </div>
-    <div class="preview-controls" v-if="currentClip">
+    <div class="preview-controls">
       <div class="time-display">
         <span>{{ formatTime(currentTime) }}</span>/<span>{{ formatTime(duration) }}</span>
       </div>
-      <div class="control-buttons">
+      <div class="control-buttons" v-if="currentClip">
         <button class="control-btn" @click="skipBackward"><SkipBack class="w-5 h-5" /></button>
         <button class="control-btn play-btn" @click="togglePlay"><Play v-if="!isPlaying" class="w-6 h-6" /><Pause v-else class="w-6 h-6" /></button>
         <button class="control-btn" @click="skipForward"><SkipForward class="w-5 h-5" /></button>
       </div>
-      <div class="volume-control">
+      <div class="volume-control" v-if="currentClip">
         <Volume2 class="w-5 h-5 text-gray-400" />
         <input type="range" v-model="volume" min="0" max="1" step="0.1" class="volume-slider" />
       </div>
@@ -46,9 +46,17 @@ const volume = ref(1)
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
-const videoSource = computed(() => getVideoSource(props.currentClip))
+const videoSource = computed(() => {
+  const source = getVideoSource(props.currentClip)
+  console.log('VideoPreview videoSource:', source)
+  console.log('VideoPreview currentClip:', props.currentClip)
+  return source
+})
 
-function onVideoLoaded() { if (videoRef.value) duration.value = videoRef.value.duration || 0 }
+function onVideoLoaded() {
+  console.log('Video loaded, duration:', videoRef.value?.duration)
+  if (videoRef.value) duration.value = videoRef.value.duration || 0
+}
 function onTimeUpdate() { if (videoRef.value) { currentTime.value = videoRef.value.currentTime || 0; emit('timeUpdate', currentTime.value) } }
 function onVideoError(e: Event) { console.error('Video error:', e) }
 function onPlay() { isPlaying.value = true; emit('playStateChange', true) }
@@ -77,20 +85,21 @@ watch(() => props.currentClip, () => { isPlaying.value = false; currentTime.valu
 </script>
 
 <style scoped>
-.video-preview { display: flex; flex-direction: column; background: #0d0d0d; border-right: 1px solid #333; overflow: hidden }
-.preview-container { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 300px; overflow: hidden; position: relative }
+.video-preview { display: flex; flex-direction: column; background: #0d0d0d; border-right: 1px solid #333; overflow: hidden; height: 100% }
+.preview-container { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 400px; overflow: hidden; position: relative; width: 100% }
 .video-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem }
-.video-player { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) }
-.preview-controls { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #1a1a1a; border-top: 1px solid #333 }
-.time-display { display: flex; align-items: center; gap: 0.5rem; font-family: monospace; font-size: 0.875rem; color: #ccc }
-.control-buttons { display: flex; align-items: center; gap: 0.5rem }
-.control-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: #333; border: none; border-radius: 6px; color: white; cursor: pointer; transition: background 0.2s }
-.control-btn:hover { background: #444 }
-.play-btn { width: 44px; height: 44px; background: #6366f1 }
+.video-player { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0 }
+.preview-controls { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: #0d0d0d; border-top: 2px solid #333; flex-shrink: 0; margin-top: auto }
+.time-display { display: flex; align-items: center; gap: 0.5rem; font-family: monospace; font-size: 1rem; color: #fff; font-weight: 500; min-width: 100px }
+.control-buttons { display: flex; align-items: center; gap: 0.75rem; flex: 1; justify-content: center }
+.control-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #333; border: none; border-radius: 8px; color: white; cursor: pointer; transition: all 0.2s }
+.control-btn:hover { background: #6366f1; transform: scale(1.05) }
+.play-btn { width: 50px; height: 50px; background: #6366f1 }
 .play-btn:hover { background: #4f46e5 }
-.volume-control { display: flex; align-items: center; gap: 0.5rem }
-.volume-slider { width: 80px; height: 4px; -webkit-appearance: none; background: #333; border-radius: 2px; outline: none }
-.volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #6366f1; border-radius: 50%; cursor: pointer }
+.volume-control { display: flex; align-items: center; gap: 0.75rem; min-width: 120px }
+.volume-slider { width: 100px; height: 6px; -webkit-appearance: none; appearance: none; background: #333; border-radius: 3px; outline: none }
+.volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #6366f1; border-radius: 50%; cursor: pointer }
+.volume-slider::-moz-range-thumb { width: 16px; height: 16px; background: #6366f1; border-radius: 50%; cursor: pointer; border: none }
 .context-menu { position: fixed; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 0.5rem; z-index: 1000; min-width: 200px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) }
 .context-menu-item { display: flex; justify-content: space-between; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: #ccc; border-radius: 4px }
 .context-menu-item:hover { background: #333 }

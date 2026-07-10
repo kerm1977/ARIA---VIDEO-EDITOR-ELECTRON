@@ -18,8 +18,10 @@ export function formatDate(dateString: string): string {
 
 export function getVideoSource(clip: any): string {
   if (!clip) return ''
+  // Prefer proxy if available, otherwise use original
   const path = clip.proxy_path || clip.original_path
   if (path.startsWith('blob:') || path.startsWith('http')) return path
+  if (path.startsWith('local-video://')) return path.replace('local-video://', 'file://')
   if (path.startsWith('file://')) return path
   return 'file://' + path
 }

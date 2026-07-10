@@ -1,0 +1,1 @@
+cmd_Release/video_engine.node := ln -f "Release/obj.target/video_engine.node" "Release/video_engine.node" 2>/dev/null || (rm -rf "Release/video_engine.node" && cp -af "Release/obj.target/video_engine.node" "Release/video_engine.node")

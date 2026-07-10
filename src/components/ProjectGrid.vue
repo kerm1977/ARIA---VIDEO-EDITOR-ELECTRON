@@ -21,10 +21,21 @@
         </div>
       </div>
     </div>
+    <div v-if="showNewProjectModal" class="modal-overlay" @click="cancelNewProject">
+      <div class="modal-content" @click.stop>
+        <h3 class="modal-title">New Project</h3>
+        <input v-model="newProjectName" class="modal-input" placeholder="Project name" @keyup.enter="confirmNewProject" />
+        <div class="modal-buttons">
+          <button @click="cancelNewProject" class="modal-btn cancel">Cancel</button>
+          <button @click="confirmNewProject" class="modal-btn confirm">Create</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Plus, Video } from 'lucide-vue-next'
 import { useProjectStore } from '../stores/project'
 import { storeToRefs } from 'pinia'
@@ -32,10 +43,24 @@ import { formatTime, formatDate } from '../utils/video'
 
 const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
+const showNewProjectModal = ref(false)
+const newProjectName = ref('Untitled Project')
 
 function createNewProject() {
-  const name = prompt('Enter project name:', 'Untitled Project')
-  if (name) projectStore.createProject(name)
+  showNewProjectModal.value = true
+}
+
+function confirmNewProject() {
+  if (newProjectName.value.trim()) {
+    projectStore.createProject(newProjectName.value.trim())
+    showNewProjectModal.value = false
+    newProjectName.value = 'Untitled Project'
+  }
+}
+
+function cancelNewProject() {
+  showNewProjectModal.value = false
+  newProjectName.value = 'Untitled Project'
 }
 
 function openProject(project: any) { projectStore.setCurrentProject(project) }
@@ -57,4 +82,15 @@ function openProject(project: any) { projectStore.setCurrentProject(project) }
 .project-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; color: white }
 .project-meta { font-size: 0.875rem; color: #888; margin-bottom: 0.25rem }
 .project-duration { font-size: 0.875rem; color: #666 }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000 }
+.modal-content { background: #1a1a1a; border: 1px solid #333; border-radius: 0.75rem; padding: 2rem; min-width: 400px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) }
+.modal-title { font-size: 1.25rem; font-weight: 600; color: white; margin-bottom: 1.5rem }
+.modal-input { width: 100%; padding: 0.75rem; background: #0d0d0d; border: 1px solid #333; border-radius: 0.5rem; color: white; font-size: 1rem; margin-bottom: 1.5rem; outline: none }
+.modal-input:focus { border-color: #6366f1 }
+.modal-buttons { display: flex; gap: 1rem; justify-content: flex-end }
+.modal-btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s }
+.modal-btn.cancel { background: #333; color: white }
+.modal-btn.cancel:hover { background: #444 }
+.modal-btn.confirm { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white }
+.modal-btn.confirm:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) }
 </style>

@@ -16,6 +16,7 @@
     <div class="editor-content">
       <div class="main-panel"><VideoPreview ref="videoPreview" :current-clip="selectedClip" @timeUpdate="handleTimeUpdate" @playStateChange="handlePlayStateChange" /></div>
     </div>
+    <Toolbar @addMedia="importVideo" @cut="handleCutClip" @text="handleText" @speed="handleSpeed" @recordAudio="handleRecordAudio" @addAudio="handleGuitar" @flip="handleFlip" @proxy="handleProxy" @process="handleProcess" />
     <div class="timeline-panel"><Timeline :tracks="currentProject?.tracks || []" :duration="currentProject?.duration || 0" :currentTime="currentTime" :isPlaying="isPlaying" @add-clip="showImportModal = true" @select-clip="selectedClip = $event" @timeUpdate="handleTimelineTimeUpdate" @cutClip="handleCutClip" @addMedia="showImportModal = true" /></div>
     <ProxySettingsModal v-if="showProxySettings" :settings="proxySettings" @close="showProxySettings = false" @save="saveProxySettings" />
     <ImportModal v-if="showImportModal" @close="showImportModal = false" @import="handleImport" />
@@ -29,6 +30,7 @@ import { useProjectStore } from '../stores/project'
 import { storeToRefs } from 'pinia'
 import VideoPreview from './VideoPreview.vue'
 import Timeline from './Timeline.vue'
+import Toolbar from './Toolbar.vue'
 import ProxySettingsModal from './ProxySettingsModal.vue'
 import ImportModal from './ImportModal.vue'
 import type { VideoClip } from '../stores/project'
@@ -50,15 +52,21 @@ function handleTimeUpdate(time: number) { currentTime.value = time }
 function handlePlayStateChange(playing: boolean) { isPlaying.value = playing }
 function handleTimelineTimeUpdate(time: number) { currentTime.value = time; videoPreview.value?.seekTo(time) }
 async function importVideo() {
+  console.log('importVideo called')
+  console.log('isElectron():', isElectron())
+  console.log('window.electronAPI:', window.electronAPI)
   if (!isElectron()) {
+    console.log('Not in Electron mode, showing import modal')
     showImportModal.value = true
     return
   }
   try {
+    console.log('Opening file dialog')
     const filePath = await window.electronAPI.dialogOpen({
       properties: ['openFile'],
       filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'avi', 'mkv'] }]
     })
+    console.log('File selected:', filePath)
     if (filePath) {
       await processVideoImport(filePath)
     }
@@ -69,10 +77,26 @@ async function importVideo() {
 }
 async function processVideoImport(filePath: string) {
   try {
+    console.log('Importing video:', filePath)
+    console.log('Is Electron:', isElectron())
     const metadata = await projectStore.getVideoMetadata(filePath)
+    console.log('Video metadata:', metadata)
     let proxyPath: string | undefined
+    // Only generate proxy if enabled in settings
     if (isElectron() && proxySettings.value.enabled) {
-      proxyPath = await projectStore.generateProxy(filePath, proxySettings.value)
+      console.log('Generating proxy with settings:', proxySettings.value)
+      // Convert reactive object to plain object for IPC
+      const plainSettings = {
+        enabled: proxySettings.value.enabled,
+        resolution: proxySettings.value.resolution,
+        codec: proxySettings.value.codec,
+        bitrate: proxySettings.value.bitrate,
+        useGPU: proxySettings.value.useGPU
+      }
+      proxyPath = await projectStore.generateProxy(filePath, plainSettings)
+      console.log('Proxy generated at:', proxyPath)
+    } else {
+      console.log('Proxy generation disabled or not in Electron mode')
     }
     const clip: VideoClip = {
       id: crypto.randomUUID(),
@@ -84,10 +108,20 @@ async function processVideoImport(filePath: string) {
       in_point: 0,
       out_point: metadata.duration
     }
+    console.log('Created clip:', clip)
     if (currentProject.value) {
-      if (currentProject.value.tracks.length === 0) currentProject.value.tracks.push({ id: crypto.randomUUID(), name: 'Video 1', clips: [] })
-      await projectStore.addClipToTrack(currentProject.value.tracks[0].id, clip)
+      // Ensure a video track exists
+      let videoTrack = currentProject.value.tracks.find(t => t.type === 'video')
+      if (!videoTrack) {
+        videoTrack = { id: crypto.randomUUID(), name: 'Video 1', type: 'video', clips: [] }
+        const updatedProject = { ...currentProject.value, tracks: [...currentProject.value.tracks, videoTrack] }
+        projectStore.setCurrentProject(updatedProject)
+      }
+      await projectStore.addClipToTrack(videoTrack.id, clip)
       selectedClip.value = clip
+      console.log('Selected clip set:', selectedClip.value)
+    } else {
+      console.error('No current project to add clip to')
     }
   } catch (error) {
     console.error('Failed to import video:', error)
@@ -103,19 +137,125 @@ function handleCutClip() {
   const clip = track.clips[clipIndex]
   if (cutTime <= clip.start_time + 0.1 || cutTime >= clip.end_time - 0.1) return
   const splitPoint = cutTime - clip.start_time
-  const firstPart: VideoClip = {
+  const firstPart = {
     ...clip,
     id: crypto.randomUUID(),
     end_time: cutTime,
     out_point: clip.in_point + splitPoint
   }
-  const secondPart: VideoClip = {
+  const secondPart = {
     ...clip,
     id: crypto.randomUUID(),
     start_time: cutTime,
     in_point: clip.in_point + splitPoint
   }
   track.clips.splice(clipIndex, 1, firstPart, secondPart)
+}
+
+function handleText() {
+  alert('Text tool coming soon')
+}
+
+function handleSpeed() {
+  alert('Speed control coming soon')
+}
+
+function handleRecordAudio() {
+  alert('Audio recording coming soon')
+}
+
+async function handleGuitar() {
+  if (!currentProject.value) {
+    alert('Please create a project first')
+    return
+  }
+
+  if (!isElectron()) {
+    // Web mode: show audio import modal
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'audio/*'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        await processAudioImport(file.name, URL.createObjectURL(file), file.size)
+      }
+    }
+    input.click()
+    return
+  }
+  try {
+    const filePath = await window.electronAPI.dialogOpen({
+      properties: ['openFile'],
+      filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'aac', 'ogg', 'flac', 'm4a', 'wma'] }]
+    })
+    if (filePath) {
+      await processAudioImport(filePath)
+    }
+  } catch (error) {
+    console.error('Failed to import audio:', error)
+    alert('Failed to import audio: ' + error)
+  }
+}
+
+async function processAudioImport(filePath: string, webUrl?: string, fileSize?: number) {
+  try {
+    let metadata
+    if (isElectron() && !webUrl) {
+      metadata = await projectStore.getAudioMetadata(filePath)
+    } else {
+      // Mock metadata for web mode
+      metadata = {
+        duration: 60,
+        codec: 'aac',
+        channels: 2,
+        sample_rate: 44100,
+        bitrate: 128000,
+        file_size: fileSize || 0
+      }
+    }
+
+    const audioClip = {
+      id: crypto.randomUUID(),
+      original_path: filePath,
+      metadata,
+      start_time: 0,
+      end_time: metadata.duration,
+      in_point: 0,
+      out_point: metadata.duration
+    }
+
+    // Find or create audio track
+    let audioTrack = currentProject.value!.tracks.find(t => t.type === 'audio')
+    if (!audioTrack) {
+      audioTrack = {
+        id: crypto.randomUUID(),
+        name: 'Audio 1',
+        type: 'audio',
+        clips: []
+      }
+      currentProject.value!.tracks.push(audioTrack)
+    }
+
+    // Add clip to audio track
+    await projectStore.addClipToTrack(audioTrack.id, audioClip)
+    alert('Audio imported successfully!')
+  } catch (error) {
+    console.error('Failed to process audio:', error)
+    alert('Failed to process audio: ' + error)
+  }
+}
+
+function handleFlip() {
+  alert('Flip tool coming soon')
+}
+
+function handleProxy() {
+  showProxySettings.value = true
+}
+
+function handleProcess() {
+  alert('Process tool coming soon')
 }
 
 async function handleImport(file: File) {
@@ -128,7 +268,7 @@ async function handleImport(file: File) {
     start_time: 0, end_time: 60, in_point: 0, out_point: 60
   }
   if (currentProject.value) {
-    if (currentProject.value.tracks.length === 0) currentProject.value.tracks.push({ id: crypto.randomUUID(), name: 'Video 1', clips: [] })
+    if (currentProject.value.tracks.length === 0) currentProject.value.tracks.push({ id: crypto.randomUUID(), name: 'Video 1', type: 'video', clips: [] })
     await projectStore.addClipToTrack(currentProject.value.tracks[0].id, mockClip)
     selectedClip.value = mockClip
   }
@@ -166,7 +306,7 @@ async function exportProject() {
 .header-right { display: flex; align-items: center; gap: 0.75rem }
 .header-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; background: #333; border: none; border-radius: 6px; color: white; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.2s }
 .header-btn:hover { background: #444 }
-.editor-content { flex: 1; display: flex; overflow: hidden }
-.main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden }
+.editor-content { flex: 1; display: flex; flex-direction: column; overflow: hidden }
+.main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 400px }
 .timeline-panel { height: 300px; border-top: 1px solid #333; flex-shrink: 0; width: 100% }
 </style>

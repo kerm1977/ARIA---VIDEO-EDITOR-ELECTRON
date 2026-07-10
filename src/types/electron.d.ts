@@ -2,14 +2,18 @@ export interface ElectronAPI {
   dialogOpen: (options: any) => Promise<string | null>
   dialogSave: (options: any) => Promise<string | null>
   getVideoMetadata: (path: string) => Promise<any>
+  getAudioMetadata: (path: string) => Promise<AudioMetadata>
   generateProxy: (path: string, settings: any, useGPU?: boolean) => Promise<string>
   exportVideo: (project: any, outputPath: string) => Promise<string>
   pathToUrl: (path: string) => Promise<string>
   fileStat: (path: string) => Promise<{ size: number }>
-  getSystemPerformance: () => Promise<SystemPerformance>
+  getSystemPerformance: () => Promise<EnhancedSystemPerformance>
   checkFFmpegGPUSupport: () => Promise<GPUSupport>
   detectScenes: (path: string) => Promise<SceneDetectionResult>
   analyzeAudio: (path: string) => Promise<AudioAnalysisResult>
+  stabilizeVideo: (path: string, outputPath: string) => Promise<string>
+  enhanceVideo: (path: string, outputPath: string, settings: any) => Promise<string>
+  denoiseVideo: (path: string, outputPath: string) => Promise<string>
 }
 
 export interface SystemPerformance {
@@ -20,6 +24,39 @@ export interface SystemPerformance {
   platform: string
   arch: string
   gpuAcceleration: string
+}
+
+export interface EnhancedSystemPerformance {
+  cpuCount: number
+  cpuModel: string
+  cpuSpeed: number
+  cpuUsage: number
+  totalMemory: number
+  freeMemory: number
+  usedMemory: number
+  memoryUsagePercent: number
+  platform: string
+  arch: string
+  gpuInfo: GPUInfo
+  audioInfo: AudioInfo
+  timestamp: number
+}
+
+export interface GPUInfo {
+  available: boolean
+  type: string
+  vendor: string
+  api: string
+  memory: number
+}
+
+export interface AudioInfo {
+  inputDevices: number
+  outputDevices: number
+  defaultInput: string
+  defaultOutput: string
+  sampleRates: number[]
+  bufferSize: number
 }
 
 export interface GPUSupport {
@@ -35,6 +72,15 @@ export interface SceneDetectionResult {
 export interface AudioAnalysisResult {
   hasAudio: boolean
   duration: number
+}
+
+export interface AudioMetadata {
+  duration: number
+  codec: string
+  channels: number
+  sample_rate: number
+  bitrate: number
+  file_size: number
 }
 
 declare global {

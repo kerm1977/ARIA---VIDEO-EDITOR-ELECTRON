@@ -1,10 +1,6 @@
 <template>
   <div class="timeline">
     <div class="timeline-header">
-      <div class="timeline-tools">
-        <button class="tool-btn" @click="cutClip" title="Cut (X)"><Scissors class="w-4 h-4" /></button>
-        <button class="tool-btn" @click="addMedia" title="Add Media"><Search class="w-4 h-4" /></button>
-      </div>
       <div class="time-ruler">
         <div v-for="mark in timeMarks" :key="mark.position" class="time-mark" :style="{ left: mark.position + '%' }">
           <span class="time-label">{{ formatTime(mark.time) }}</span>
@@ -12,13 +8,13 @@
       </div>
     </div>
     <div class="tracks-container">
-      <div v-for="track in tracks" :key="track.id" class="track">
+      <div v-for="track in tracks" :key="track.id" class="track" :class="{ 'audio-track': track.type === 'audio' }">
         <div class="track-header">
           <span class="track-name">{{ track.name }}</span>
           <button class="track-btn" @click="$emit('addClip', track.id)"><Plus class="w-4 h-4" /></button>
         </div>
         <div class="track-lane">
-          <div v-for="clip in track.clips" :key="clip.id" class="clip" :style="getClipStyle(clip, duration)" @click="$emit('selectClip', clip)">
+          <div v-for="clip in track.clips" :key="clip.id" class="clip" :class="{ 'audio-clip': track.type === 'audio' }" :style="getClipStyle(clip, duration)" @click="$emit('selectClip', clip)">
             <div class="clip-content">
               <span class="clip-name">{{ getClipName(clip) }}</span>
               <span class="clip-duration">{{ formatTime(clip.end_time - clip.start_time) }}</span>
@@ -38,23 +34,25 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Plus, Scissors, Search } from 'lucide-vue-next'
+import { Plus } from 'lucide-vue-next'
 import { formatTime, getClipStyle, getClipName } from '../utils/video'
 import type { TimelineTrack, VideoClip } from '../stores/project'
 
 const props = defineProps<{ tracks: TimelineTrack[], duration: number, currentTime: number, isPlaying: boolean }>()
-const emit = defineEmits<{ addClip: [trackId: string], selectClip: [clip: VideoClip], timeUpdate: [time: number], cutClip: [], addMedia: [] }>()
+const emit = defineEmits<{ addClip: [trackId: string], selectClip: [clip: VideoClip | any], timeUpdate: [time: number], cutClip: [] }>()
 const playheadPosition = ref(0)
 const isDragging = ref(false)
 
 const timeMarks = computed(() => {
   const marks = []
-  const totalDuration = Math.max(props.duration || 60, 60)
-  for (let i = 0; i <= totalDuration; i += 10) marks.push({ time: i, position: (i / totalDuration) * 100 })
+  const totalDuration = props.duration || 60
+  // Adjust interval based on duration for better display
+  const interval = totalDuration < 60 ? 5 : 10
+  for (let i = 0; i <= totalDuration; i += interval) marks.push({ time: i, position: (i / totalDuration) * 100 })
   return marks
 })
 
-function startDrag(e: MouseEvent) {
+function startDrag() {
   isDragging.value = true
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
@@ -66,7 +64,7 @@ function onDrag(e: MouseEvent) {
   if (!timeline) return
   const rect = timeline.getBoundingClientRect()
   const x = e.clientX - rect.left
-  const totalDuration = Math.max(props.duration || 60, 60)
+  const totalDuration = props.duration || 60
   const newTime = (x / rect.width) * totalDuration
   playheadPosition.value = (newTime / totalDuration) * 100
   emit('timeUpdate', Math.max(0, Math.min(newTime, totalDuration)))
@@ -79,7 +77,6 @@ function stopDrag() {
 }
 
 function cutClip() { emit('cutClip') }
-function addMedia() { emit('addMedia') }
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'KeyX') {
@@ -119,8 +116,11 @@ watch(() => props.currentTime, (time) => {
 .track-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #333; border: none; border-radius: 4px; color: white; cursor: pointer; transition: background 0.2s }
 .track-btn:hover { background: #6366f1 }
 .track-lane { position: relative; height: 60px; background: #151515; border-bottom: 1px solid #333; overflow: hidden }
+.audio-track .track-lane { background: #0a0a0a }
 .clip { position: absolute; top: 8px; height: 44px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 6px; cursor: pointer; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s }
+.audio-clip { background: linear-gradient(135deg, #10b981 0%, #059669 100%) }
 .clip:hover { transform: scaleY(1.05); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) }
+.audio-clip:hover { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) }
 .clip-content { padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem }
 .clip-name { font-size: 0.75rem; font-weight: 500; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .clip-duration { font-size: 0.7rem; color: rgba(255, 255, 255, 0.7) }

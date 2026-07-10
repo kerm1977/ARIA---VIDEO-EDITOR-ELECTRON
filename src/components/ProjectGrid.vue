@@ -24,7 +24,7 @@
     <div v-if="showNewProjectModal" class="modal-overlay" @click="cancelNewProject">
       <div class="modal-content" @click.stop>
         <h3 class="modal-title">Nuevo Proyecto</h3>
-        <input ref="projectNameInput" v-model="newProjectName" class="modal-input" placeholder="Nombre del proyecto" @focus="onInputFocus" @keyup.enter="confirmNewProject" />
+        <input ref="projectNameInput" v-model="newProjectName" class="modal-input" placeholder="Nombre del proyecto" @keyup.enter="confirmNewProject" />
         <div class="modal-buttons">
           <button @click="cancelNewProject" class="modal-btn cancel">Cancelar</button>
           <button @click="confirmNewProject" class="modal-btn confirm">Crear</button>
@@ -47,7 +47,7 @@ import { formatTime, formatDate } from '../utils/video'
 const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 const showNewProjectModal = ref(false)
-const newProjectName = ref('Proyecto sin título')
+const newProjectName = ref('')
 const projectNameInput = ref<HTMLInputElement | null>(null)
 const contextMenu = ref({ visible: false, x: 0, y: 0, project: null as any })
 
@@ -55,25 +55,26 @@ function createNewProject() {
   showNewProjectModal.value = true
   nextTick(() => {
     projectNameInput.value?.focus()
-    projectNameInput.value?.select()
   })
 }
 
 function onInputFocus() {
-  newProjectName.value = ''
+  if (!newProjectName.value) {
+    newProjectName.value = ''
+  }
 }
 
 function confirmNewProject() {
   if (newProjectName.value.trim()) {
     projectStore.createProject(newProjectName.value.trim())
     showNewProjectModal.value = false
-    newProjectName.value = 'Proyecto sin título'
+    newProjectName.value = ''
   }
 }
 
 function cancelNewProject() {
   showNewProjectModal.value = false
-  newProjectName.value = 'Proyecto sin título'
+  newProjectName.value = ''
 }
 
 function openProject(project: any) { projectStore.setCurrentProject(project) }

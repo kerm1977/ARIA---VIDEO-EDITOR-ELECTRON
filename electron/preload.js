@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVideoMetadata: (path) => ipcRenderer.invoke('video:metadata', path),
   getAudioMetadata: (path) => ipcRenderer.invoke('audio:metadata', path),
   generateProxy: (path, settings, useGPU) => ipcRenderer.invoke('video:proxy', path, settings, useGPU),
+  convertVideo: (path, settings) => ipcRenderer.invoke('video:convert', path, settings),
   exportVideo: (project, outputPath) => ipcRenderer.invoke('video:export', project, outputPath),
   pathToUrl: (path) => ipcRenderer.invoke('path:to-url', path),
   fileStat: (path) => ipcRenderer.invoke('file:stat', path),

@@ -74,6 +74,36 @@ private:
     std::string error_;
 };
 
+class ConvertAsyncWorker : public Napi::AsyncWorker {
+public:
+    ConvertAsyncWorker(Napi::Function& callback, const std::string& inputPath, const std::string& outputPath, const ExportSettings& settings)
+        : Napi::AsyncWorker(callback), inputPath_(inputPath), outputPath_(outputPath), settings_(settings), success_(false) {}
+
+    void Execute() override {
+        VideoEngine engine;
+        success_ = engine.convertVideo(inputPath_, outputPath_, settings_, nullptr);
+        if (!success_) {
+            error_ = VideoEngine::getError();
+        }
+    }
+
+    void OnOK() override {
+        Napi::HandleScope scope(Env());
+        if (success_) {
+            Callback().Call({Env().Null(), Napi::String::New(Env(), outputPath_)});
+        } else {
+            Callback().Call({Napi::Error::New(Env(), error_).Value(), Env().Null()});
+        }
+    }
+
+private:
+    std::string inputPath_;
+    std::string outputPath_;
+    ExportSettings settings_;
+    bool success_;
+    std::string error_;
+};
+
 Napi::Value GetMetadata(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 1 || !info[0].IsString()) {
@@ -135,10 +165,30 @@ Napi::Value RenderFrame(const Napi::CallbackInfo& info) {
     return Napi::Buffer<uint8_t>::Copy(env, data.data(), data.size());
 }
 
+Napi::Value ConvertVideo(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 3 || !info[0].IsString() || !info[1].IsString() || !info[2].IsObject()) {
+        Napi::TypeError::New(env, "Invalid arguments").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    std::string inputPath = info[0].As<Napi::String>().Utf8Value();
+    std::string outputPath = info[1].As<Napi::String>().Utf8Value();
+    ExportSettings settings = ObjectToExportSettings(info[2].As<Napi::Object>());
+
+    Napi::Function callback = info[3].IsFunction() ? info[3].As<Napi::Function>() : Napi::Function::New(env, [](const Napi::CallbackInfo&){});
+
+    ConvertAsyncWorker* worker = new ConvertAsyncWorker(callback, inputPath, outputPath, settings);
+    worker->Queue();
+
+    return env.Undefined();
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("getMetadata", Napi::Function::New(env, GetMetadata));
     exports.Set("generateProxy", Napi::Function::New(env, GenerateProxy));
     exports.Set("renderFrame", Napi::Function::New(env, RenderFrame));
+    exports.Set("convertVideo", Napi::Function::New(env, ConvertVideo));
     return exports;
 }
 

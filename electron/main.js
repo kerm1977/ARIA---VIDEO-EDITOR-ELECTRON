@@ -373,6 +373,49 @@ ipcMain.handle('audio:metadata', async (_, filePath) => {
   })
 })
 
+// Video conversion IPC for format compatibility
+ipcMain.handle('video:convert', async (_, filePath, settings) => {
+  const dir = path.dirname(filePath)
+  const stem = path.basename(filePath, path.extname(filePath))
+  const outputPath = path.join(dir, `${stem}_converted.mp4`)
+
+  console.log('Converting video:', filePath, '->', outputPath)
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-i', filePath,
+      '-c:v', settings.videoCodec || 'h264',
+      '-c:a', settings.audioCodec || 'aac',
+      '-b:v', settings.videoBitrate ? settings.videoBitrate.toString() : '2M',
+      '-b:a', settings.audioBitrate ? settings.audioBitrate.toString() : '128k',
+      '-preset', 'fast',
+      '-movflags', '+faststart',
+      outputPath
+    ]
+
+    const ffmpeg = spawn('ffmpeg', args)
+    let error = ''
+
+    ffmpeg.stderr.on('data', (data) => {
+      error += data
+      // Parse progress from stderr
+      const timeMatch = error.match(/time=(\d+:\d+:\d+\.\d+)/)
+      if (timeMatch && settings.onProgress) {
+        settings.onProgress(timeMatch[1])
+      }
+    })
+
+    ffmpeg.on('close', (code) => {
+      if (code !== 0) return reject(error || 'FFmpeg conversion failed')
+      resolve(outputPath)
+    })
+
+    ffmpeg.on('error', (err) => {
+      reject(err.message)
+    })
+  })
+})
+
 // Proxy generation IPC with enhanced GPU acceleration
 ipcMain.handle('video:proxy', async (_, filePath, settings, useGPU = false) => {
   const dir = path.dirname(filePath)

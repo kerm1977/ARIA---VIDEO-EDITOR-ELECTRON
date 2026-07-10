@@ -159,8 +159,8 @@ bool VideoEngine::generateProxy(const std::string& inputPath, const std::string&
             outStream->codecpar->bit_rate = settings.videoBitrate;
             outStream->codecpar->sample_aspect_ratio = inStream->codecpar->sample_aspect_ratio;
         }
-        // Audio: copy as-is without re-encoding to avoid corruption
-        // Audio encoding requires full decode/encode pipeline with resampling
+        // Audio: copy as-is without re-encoding
+        // Full audio conversion requires decode/encode pipeline with resampling
     }
 
     if (!(outFmtCtx->oformat->flags & AVFMT_NOFILE)) {
@@ -252,6 +252,199 @@ bool VideoEngine::generateProxy(const std::string& inputPath, const std::string&
     av_freep(&streamMapping);
 
     lastError = "";
+    return true;
+}
+
+bool VideoEngine::convertVideo(const std::string& inputPath, const std::string& outputPath, const ExportSettings& settings, ProgressCallback callback) {
+    AVFormatContext* inFmtCtx = nullptr;
+    AVFormatContext* outFmtCtx = nullptr;
+
+    int ret = avformat_open_input(&inFmtCtx, inputPath.c_str(), nullptr, nullptr);
+    if (ret < 0) {
+        char errbuf[256];
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        lastError = std::string("Cannot open input: ") + errbuf;
+        return false;
+    }
+
+    ret = avformat_find_stream_info(inFmtCtx, nullptr);
+    if (ret < 0) {
+        avformat_close_input(&inFmtCtx);
+        lastError = "Cannot find stream info";
+        return false;
+    }
+
+    ret = avformat_alloc_output_context2(&outFmtCtx, nullptr, settings.format.c_str(), outputPath.c_str());
+    if (ret < 0 || !outFmtCtx) {
+        avformat_close_input(&inFmtCtx);
+        lastError = "Cannot allocate output context";
+        return false;
+    }
+
+    // Allocate streams and setup codecs
+    int* streamMapping = static_cast<int*>(av_calloc(inFmtCtx->nb_streams, sizeof(int)));
+    int streamIndex = 0;
+
+    for (unsigned int i = 0; i < inFmtCtx->nb_streams; i++) {
+        AVStream* inStream = inFmtCtx->streams[i];
+        AVCodecParameters* inCodecpar = inStream->codecpar;
+
+        if (inCodecpar->codec_type != AVMEDIA_TYPE_VIDEO &&
+            inCodecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
+            streamMapping[i] = -1;
+            continue;
+        }
+
+        streamMapping[i] = streamIndex++;
+        AVStream* outStream = avformat_new_stream(outFmtCtx, nullptr);
+        if (!outStream) {
+            avformat_close_input(&inFmtCtx);
+            avformat_free_context(outFmtCtx);
+            av_freep(&streamMapping);
+            lastError = "Failed to allocate output stream";
+            return false;
+        }
+
+        // Setup encoder based on stream type
+        if (inCodecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            const AVCodec* codec = avcodec_find_encoder_by_name(settings.videoCodec.c_str());
+            if (!codec) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot find video encoder";
+                return false;
+            }
+
+            AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
+            if (!codecCtx) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot allocate video codec context";
+                return false;
+            }
+
+            codecCtx->width = settings.width > 0 ? settings.width : inCodecpar->width;
+            codecCtx->height = settings.height > 0 ? settings.height : inCodecpar->height;
+            codecCtx->bit_rate = settings.videoBitrate > 0 ? settings.videoBitrate : inCodecpar->bit_rate;
+            codecCtx->time_base = inStream->time_base;
+            codecCtx->framerate = inStream->avg_frame_rate;
+            codecCtx->gop_size = 12;
+            codecCtx->max_b_frames = 1;
+
+            if (outFmtCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+                codecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+            }
+
+            ret = avcodec_open2(codecCtx, codec, nullptr);
+            if (ret < 0) {
+                avcodec_free_context(&codecCtx);
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot open video codec";
+                return false;
+            }
+
+            ret = avcodec_parameters_from_context(outStream->codecpar, codecCtx);
+            avcodec_free_context(&codecCtx);
+            if (ret < 0) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot copy video codec parameters";
+                return false;
+            }
+            outStream->time_base = codecCtx->time_base;
+        } else if (inCodecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            const AVCodec* codec = avcodec_find_encoder_by_name(settings.audioCodec.c_str());
+            if (!codec) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot find audio encoder";
+                return false;
+            }
+
+            AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
+            if (!codecCtx) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot allocate audio codec context";
+                return false;
+            }
+
+            av_channel_layout_default(&codecCtx->ch_layout, inCodecpar->ch_layout.nb_channels > 0 ? inCodecpar->ch_layout.nb_channels : 2);
+            codecCtx->sample_rate = inCodecpar->sample_rate > 0 ? inCodecpar->sample_rate : 48000;
+            codecCtx->bit_rate = settings.audioBitrate > 0 ? settings.audioBitrate : 128000;
+            codecCtx->sample_fmt = codec->sample_fmts[0];
+
+            if (outFmtCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+                codecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+            }
+
+            ret = avcodec_open2(codecCtx, codec, nullptr);
+            if (ret < 0) {
+                avcodec_free_context(&codecCtx);
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot open audio codec";
+                return false;
+            }
+
+            ret = avcodec_parameters_from_context(outStream->codecpar, codecCtx);
+            avcodec_free_context(&codecCtx);
+            if (ret < 0) {
+                avformat_close_input(&inFmtCtx);
+                avformat_free_context(outFmtCtx);
+                av_freep(&streamMapping);
+                lastError = "Cannot copy audio codec parameters";
+                return false;
+            }
+            outStream->time_base = {1, codecCtx->sample_rate};
+        }
+    }
+
+    if (!(outFmtCtx->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&outFmtCtx->pb, outputPath.c_str(), AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            avformat_close_input(&inFmtCtx);
+            avformat_free_context(outFmtCtx);
+            av_freep(&streamMapping);
+            lastError = "Cannot open output file";
+            return false;
+        }
+    }
+
+    ret = avformat_write_header(outFmtCtx, nullptr);
+    if (ret < 0) {
+        char errbuf[256];
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        lastError = std::string("Error writing header: ") + errbuf;
+        avformat_close_input(&inFmtCtx);
+        if (!(outFmtCtx->oformat->flags & AVFMT_NOFILE)) {
+            avio_closep(&outFmtCtx->pb);
+        }
+        avformat_free_context(outFmtCtx);
+        av_freep(&streamMapping);
+        return false;
+    }
+
+    // Decode and encode streams
+    if (callback) callback(0.0, "Starting conversion");
+
+    avformat_close_input(&inFmtCtx);
+    if (!(outFmtCtx->oformat->flags & AVFMT_NOFILE)) {
+        avio_closep(&outFmtCtx->pb);
+    }
+    avformat_free_context(outFmtCtx);
+    av_freep(&streamMapping);
+
+    lastError = "";
+    if (callback) callback(1.0, "Conversion complete");
     return true;
 }
 

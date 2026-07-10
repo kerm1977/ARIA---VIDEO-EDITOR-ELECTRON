@@ -32,3 +32,12 @@ export const renderFrame = (filePath, timestamp, width, height) => {
     }
   })
 }
+
+export const convertVideo = (inputPath, outputPath, settings) => {
+  return new Promise((resolve, reject) => {
+    bindings.convertVideo(inputPath, outputPath, settings, (error, result) => {
+      if (error) return reject(error)
+      resolve(result)
+    })
+  })
+}

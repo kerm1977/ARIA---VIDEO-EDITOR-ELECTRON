@@ -72,23 +72,47 @@ async function importVideo() {
 async function processVideoImport(filePath: string) {
   try {
     const metadata = await projectStore.getVideoMetadata(filePath)
-    let proxyPath: string | undefined
-    // Only generate proxy if enabled in settings
-    if (isElectron() && proxySettings.value.enabled) {
-      // Convert reactive object to plain object for IPC
-      const plainSettings = {
-        enabled: proxySettings.value.enabled,
-        resolution: proxySettings.value.resolution,
-        codec: proxySettings.value.codec,
-        bitrate: proxySettings.value.bitrate,
-        useGPU: proxySettings.value.useGPU
-      }
-      proxyPath = await projectStore.generateProxy(filePath, plainSettings)
+    let finalPath = filePath
+    let needsConversion = false
+
+    // Check if format needs conversion
+    const ext = filePath.split('.').pop()?.toLowerCase() || ''
+    const container = (metadata as any).container?.toLowerCase() || ''
+    const audioCodec = (metadata as any).audioCodec?.toLowerCase() || ''
+
+    // Convert MKV to MP4
+    if (ext === 'mkv' || container === 'matroska') {
+      needsConversion = true
     }
+
+    // Convert AC3/EAC3 audio to AAC
+    if (audioCodec === 'ac3' || audioCodec === 'eac3') {
+      needsConversion = true
+    }
+
+    // Convert other non-browser formats
+    if (['avi', 'wmv', 'mov'].includes(ext) && !metadata.codec?.includes('h264')) {
+      needsConversion = true
+    }
+
+    if (needsConversion && isElectron()) {
+      console.log('Converting video for browser compatibility')
+      const convertSettings = {
+        videoCodec: 'h264',
+        audioCodec: 'aac',
+        videoBitrate: '2M',
+        audioBitrate: '128k'
+      }
+      finalPath = await projectStore.convertVideo(filePath, convertSettings)
+      // Update metadata after conversion
+      const newMetadata = await projectStore.getVideoMetadata(finalPath)
+      Object.assign(metadata, newMetadata)
+    }
+
     const clip: VideoClip = {
       id: crypto.randomUUID(),
-      original_path: filePath,
-      proxy_path: proxyPath,
+      original_path: finalPath,
+      proxy_path: undefined,
       metadata,
       start_time: 0,
       end_time: metadata.duration,
@@ -249,7 +273,7 @@ async function handleImport(file: File) {
     id: crypto.randomUUID(),
     original_path: file.name,
     proxy_path: url,
-    metadata: { duration: 0, width: 1920, height: 1080, fps: 30, codec: 'h264', bitrate: 5000000, file_size: file.size },
+    metadata: { duration: 0, width: 1920, height: 1080, fps: 30, codec: 'h264', container: 'mp4', bitrate: 5000000, file_size: file.size, hasAudio: true, audioCodec: 'aac' },
     start_time: 0, end_time: 60, in_point: 0, out_point: 60
   }
   if (currentProject.value) {

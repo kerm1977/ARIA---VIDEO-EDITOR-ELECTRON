@@ -4,6 +4,7 @@ export interface ElectronAPI {
   getVideoMetadata: (path: string) => Promise<any>
   getAudioMetadata: (path: string) => Promise<AudioMetadata>
   generateProxy: (path: string, settings: any, useGPU?: boolean) => Promise<string>
+  convertVideo: (path: string, settings: any) => Promise<string>
   exportVideo: (project: any, outputPath: string) => Promise<string>
   pathToUrl: (path: string) => Promise<string>
   fileStat: (path: string) => Promise<{ size: number }>

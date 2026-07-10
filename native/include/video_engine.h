@@ -60,12 +60,15 @@ public:
     VideoMetadata getMetadata(const std::string& filePath);
     bool generateProxy(const std::string& inputPath, const std::string& outputPath, const ProxySettings& settings, ProgressCallback callback = nullptr);
     bool exportVideo(const std::string& inputPath, const std::string& outputPath, const ExportSettings& settings, ProgressCallback callback = nullptr);
+    bool convertVideo(const std::string& inputPath, const std::string& outputPath, const ExportSettings& settings, ProgressCallback callback = nullptr);
     std::vector<uint8_t> renderFrame(const std::string& filePath, double timestamp, int width, int height);
 
     static std::string getError();
 
 private:
     static std::string lastError;
+    bool decodeEncodeVideo(AVFormatContext* inFmtCtx, AVFormatContext* outFmtCtx, int* streamMapping, const ExportSettings& settings, ProgressCallback callback);
+    bool decodeEncodeAudio(AVFormatContext* inFmtCtx, AVFormatContext* outFmtCtx, int* streamMapping, const ExportSettings& settings, ProgressCallback callback);
 };
 
 } // namespace aria

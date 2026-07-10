@@ -7,8 +7,11 @@ export interface VideoMetadata {
   height: number
   fps: number
   codec: string
+  container: string
   bitrate: number
   file_size: number
+  hasAudio: boolean
+  audioCodec: string
 }
 
 export interface AudioMetadata {
@@ -137,6 +140,19 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function convertVideo(path: string, settings: any): Promise<string> {
+    try {
+      isLoading.value = true
+      error.value = null
+      return await window.electronAPI.convertVideo(path, settings)
+    } catch (e) {
+      error.value = e as string
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function addClipToTrack(trackId: string, clip: VideoClip | any) {
     if (!currentProject.value) return
 
@@ -201,6 +217,7 @@ export const useProjectStore = defineStore('project', () => {
     getVideoMetadata,
     getAudioMetadata,
     generateProxy,
+    convertVideo,
     addClipToTrack,
     exportVideo,
     setCurrentProject,

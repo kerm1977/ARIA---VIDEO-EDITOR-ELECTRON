@@ -15,7 +15,7 @@ export interface ElectronAPI {
   stabilizeVideo: (path: string, outputPath: string) => Promise<string>
   enhanceVideo: (path: string, outputPath: string, settings: any) => Promise<string>
   denoiseVideo: (path: string, outputPath: string) => Promise<string>
-  onConversionProgress: (callback: (data: { progress: number, message: string }) => void) => void
+  onConversionProgress: (callback: (data: { progress: number, message: string }) => void) => () => void
   saveProjectData: (data: string) => Promise<boolean>
   loadProjectData: () => Promise<string | null>
   showItemInFolder: (path: string) => Promise<boolean>

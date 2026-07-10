@@ -18,6 +18,8 @@ try {
 
 const isDev = !app.isPackaged
 
+if (isDev) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
+
 // Enhanced system performance detection
 function detectSystemPerformance() {
   const cpus = os.cpus()

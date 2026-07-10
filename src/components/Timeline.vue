@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { formatTime, getClipStyle, getClipName } from '../utils/video'
 import type { TimelineTrack, VideoClip } from '../stores/project'
@@ -100,9 +100,7 @@ function stopDrag() {
   document.removeEventListener('mouseup', stopDrag)
 }
 
-function cutClip() { emit('cutClip') }
-
-function showContextMenu(event: MouseEvent, clip: VideoClip) {
+function showContextMenu(event: MouseEvent, clip: any) {
   contextMenu.value = {
     visible: true,
     x: event.clientX,
@@ -154,16 +152,7 @@ function createProxy() {
   hideContextMenu()
 }
 
-function handleKeyDown(e: KeyboardEvent) {
-  if (e.code === 'KeyX') {
-    e.preventDefault()
-    cutClip()
-  }
-}
-
-onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', stopDrag)
 })

@@ -5,7 +5,7 @@ export interface ElectronAPI {
   getAudioMetadata: (path: string) => Promise<AudioMetadata>
   generateProxy: (path: string, settings: any, useGPU?: boolean) => Promise<string>
   convertVideo: (path: string, settings: any) => Promise<string>
-  exportVideo: (project: any, outputPath: string) => Promise<string>
+  exportVideo: (project: any, outputPath: string, options?: { videoCodec?: string; audioCodec?: string; container?: string }) => Promise<string>
   pathToUrl: (path: string) => Promise<string>
   fileStat: (path: string) => Promise<{ size: number }>
   getSystemPerformance: () => Promise<EnhancedSystemPerformance>

@@ -800,23 +800,86 @@ ipcMain.handle('video:denoise', async (_, filePath, outputPath) => {
   })
 })
 
-// Export video IPC
-ipcMain.handle('video:export', async (_, project, outputPath) => {
+function toPlainPath(p) {
+  if (p.startsWith('file://')) return p.slice(7)
+  if (p.startsWith('local-video://')) return p.slice(14)
+  return p
+}
+
+function buildExportFFmpegArgs(project, outputPath, options = {}) {
   if (!project.tracks.length || !project.tracks[0].clips.length) {
     throw new Error('No clips to export')
   }
-  const sourcePath = project.tracks[0].clips[0].original_path
+  const clips = [...project.tracks[0].clips]
+    .filter((c) => c && c.metadata && c.metadata.width)
+    .sort((a, b) => a.start_time - b.start_time)
+  if (!clips.length) throw new Error('No clips to export')
+
+  const first = clips[0]
+  const meta = first.metadata || {}
+  let width = 1920, height = 1080, fps = 30
+  if (meta.width && meta.height) {
+    width = meta.width
+    height = meta.height
+    fps = meta.fps || 30
+  }
+  const ratioMap = {
+    '1:1': [1080, 1080], '4:5': [1080, 1350], '9:16': [1080, 1920], '16:9': [1920, 1080],
+    '4:3': [1440, 1080], '2:1': [1920, 960], '3:4': [1080, 1440], '3:2': [1620, 1080],
+    '2:3': [1080, 1620], '1:2': [1080, 2160], '5:4': [1350, 1080], '21:9': [2520, 1080]
+  }
+  if (project.aspectRatio && ratioMap[project.aspectRatio]) {
+    ;[width, height] = ratioMap[project.aspectRatio]
+  }
+
+  const args = []
+  clips.forEach((clip) => {
+    const p = toPlainPath(clip.original_path || clip.proxy_path || '')
+    if (p) args.push('-i', p)
+  })
+
+  const filterParts = []
+  let inputIndex = 0
+  clips.forEach((clip) => {
+    const p = toPlainPath(clip.original_path || clip.proxy_path || '')
+    if (!p) return
+    const duration = Math.max(0, clip.out_point - clip.in_point)
+    filterParts.push(`[${inputIndex}:v]trim=${clip.in_point}:${clip.out_point},setpts=PTS-STARTPTS,format=pix_fmts=yuv420p,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1/1,fps=${fps}[v${inputIndex}]`)
+    if (clip.metadata.hasAudio) {
+      filterParts.push(`[${inputIndex}:a]atrim=${clip.in_point}:${clip.out_point},asetpts=PTS-STARTPTS,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a${inputIndex}]`)
+    } else {
+      filterParts.push(`anullsrc=channel_layout=stereo:sample_rate=48000,atrim=0:${duration},asetpts=PTS-STARTPTS,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a${inputIndex}]`)
+    }
+    inputIndex++
+  })
+
+  const active = clips.filter((c) => toPlainPath(c.original_path || c.proxy_path || '')).length
+  const vInputs = []
+  const aInputs = []
+  for (let i = 0; i < inputIndex; i++) {
+    vInputs.push(`[v${i}]`)
+    aInputs.push(`[a${i}]`)
+  }
+  filterParts.push(`${vInputs.join('')}concat=n=${active}:v=1:a=0[outv]`)
+  filterParts.push(`${aInputs.join('')}concat=n=${active}:v=0:a=1[outa]`)
+
+  args.push('-filter_complex', filterParts.join(';'), '-map', '[outv]', '-map', '[outa]')
+  const videoCodec = options.videoCodec || 'libx264'
+  const audioCodec = options.audioCodec || 'aac'
+  args.push('-c:v', videoCodec)
+  if (videoCodec === 'libx264' || videoCodec === 'libx265') args.push('-preset', 'medium', '-crf', videoCodec === 'libx264' ? '23' : '28')
+  args.push('-c:a', audioCodec)
+  if (audioCodec === 'libmp3lame') args.push('-b:a', '192k')
+  else args.push('-b:a', '192k')
+  args.push('-movflags', '+faststart', '-y', outputPath)
+  return args
+}
+
+// Export video IPC
+ipcMain.handle('video:export', async (_, project, outputPath, options) => {
+  const args = buildExportFFmpegArgs(project, outputPath, options)
   return new Promise((resolve, reject) => {
-    const ffmpeg = spawn('ffmpeg', [
-      '-i', sourcePath,
-      '-c:v', 'libx264',
-      '-preset', 'medium',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-b:a', '192k',
-      outputPath,
-      '-y'
-    ])
+    const ffmpeg = spawn('ffmpeg', args)
     let error = ''
     ffmpeg.stderr.on('data', (data) => { error += data })
     ffmpeg.on('close', (code) => {

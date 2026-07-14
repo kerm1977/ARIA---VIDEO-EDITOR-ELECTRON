@@ -25,6 +25,7 @@
       @redo="handleRedo"
       @addMedia="importVideo"
       @selectTool="handleSelect"
+      @selectAllTrack="handleSelectAllTrack"
       @cut="handleCutClip"
       @aspectRatio="handleAspectRatio"
       @rotate="handleRotate"
@@ -88,6 +89,7 @@ const {
   handleUndo,
   handleRedo,
   handleProxy,
+  handleSelectAllTrack,
   handleCutClip,
   handleSplitClip,
   handleMoveClip,

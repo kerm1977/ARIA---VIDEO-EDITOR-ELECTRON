@@ -14,6 +14,7 @@ interface TimelineEmit {
 
 export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state: { playheadPosition: { value: number }; isDragging: { value: boolean }; effectiveDuration: { value: number }; baseDuration: { value: number } }) {
   const dragClip = ref<{ clip: any | null; trackId: string; startX: number; startTime: number; length: number; laneWidth: number; moved: boolean; originalStartTime: number; dragDirection: 'left' | 'right' | null } | null>(null)
+  const dragClips = ref<{ clip: any; trackId: string; originalStartTime: number; length: number }[]>([])
 
   function onDrag(e: MouseEvent) {
     if (!state.isDragging.value) return
@@ -52,9 +53,20 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     const deltaX = e.clientX - s.startX
     const deltaTime = (deltaX / s.laneWidth) * state.effectiveDuration.value
     const newStart = Math.max(0, s.startTime + deltaTime)
+    
+    // Mover el clip principal
     s.clip.start_time = newStart
     s.clip.end_time = newStart + s.length
     s.moved = true
+    
+    // Mover todos los clips seleccionados manteniendo posiciones relativas
+    if (dragClips.value.length > 0) {
+      for (const dragItem of dragClips.value) {
+        const relativeOffset = dragItem.originalStartTime - s.originalStartTime
+        dragItem.clip.start_time = newStart + relativeOffset
+        dragItem.clip.end_time = dragItem.clip.start_time + dragItem.length
+      }
+    }
     
     if (deltaX > 0) {
       s.dragDirection = 'right'
@@ -100,14 +112,31 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
         const hasOverlap = checkOverlap(dragClip.value.clip, dragClip.value.trackId, dragClip.value.clip.start_time, dragClip.value.clip.end_time)
         if (hasOverlap) {
           const snapPosition = findSnapPosition(dragClip.value.clip, dragClip.value.trackId, dragClip.value.clip.start_time, dragClip.value.length, dragClip.value.dragDirection)
+          const delta = snapPosition - dragClip.value.clip.start_time
           dragClip.value.clip.start_time = snapPosition
           dragClip.value.clip.end_time = snapPosition + dragClip.value.length
           emit('move-clip', dragClip.value.clip.id, snapPosition)
+          
+          // Aplicar el mismo delta a todos los clips seleccionados
+          for (const dragItem of dragClips.value) {
+            dragItem.clip.start_time += delta
+            dragItem.clip.end_time += delta
+            emit('move-clip', dragItem.clip.id, dragItem.clip.start_time)
+          }
         } else {
           emit('move-clip', dragClip.value.clip.id, dragClip.value.clip.start_time)
+          // Guardar todos los clips seleccionados
+          for (const dragItem of dragClips.value) {
+            emit('move-clip', dragItem.clip.id, dragItem.clip.start_time)
+          }
         }
+        
+        // Re-emitir selección para mantener visualización
+        const allSelectedClips = [dragClip.value.clip, ...dragClips.value.map(d => d.clip)]
+        emit('select-clips', allSelectedClips as VideoClip[])
       }
       dragClip.value = null
+      dragClips.value = []
     }
     document.body.style.userSelect = ''
     document.removeEventListener('mousemove', onClipDrag)
@@ -131,6 +160,22 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     const rect = lane?.getBoundingClientRect()
     if (!rect) return
     dragClip.value = { clip, trackId, startX: e.clientX, startTime: clip.start_time, length: clip.end_time - clip.start_time, laneWidth: rect.width, moved: false, originalStartTime: clip.start_time, dragDirection: null }
+    
+    // Capturar todos los clips seleccionados para movimiento simultáneo
+    const selectedClips = props.selectedClips || []
+    if (selectedClips.length > 1) {
+      dragClips.value = selectedClips
+        .filter(c => c.id !== clip.id)
+        .map(c => ({
+          clip: c,
+          trackId: trackId,
+          originalStartTime: c.start_time,
+          length: c.end_time - c.start_time
+        }))
+    } else {
+      dragClips.value = []
+    }
+    
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onClipDrag)
     document.addEventListener('mouseup', stopClipDrag)
@@ -144,6 +189,7 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     const rect = lane?.getBoundingClientRect()
     if (!rect) return
     dragClip.value = { clip, trackId, startX: e.clientX, startTime: clip.start_time, length: clip.end_time - clip.start_time, laneWidth: rect.width, moved: false, originalStartTime: clip.start_time, dragDirection: null }
+    dragClips.value = []
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onClipDrag)
     document.addEventListener('mouseup', stopClipDrag)

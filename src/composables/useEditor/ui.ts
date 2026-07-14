@@ -71,6 +71,24 @@ export function useEditorUI(state: BaseEditorState) {
     state.setSelectedClips(allClips)
   }
 
+  function handleSelectAllTrack() {
+    if (!state.currentProject) return
+    // Si hay un clip seleccionado, usar su pista
+    if (state.selectedClip) {
+      const clip = state.selectedClip
+      const track = state.currentProject.tracks.find(t => t.clips.some(c => c.id === clip.id))
+      if (!track) return
+      const trackClips = track.clips as VideoClip[]
+      state.setSelectedClips(trackClips)
+    } else {
+      // Si no hay clip seleccionado, seleccionar todos los clips de la primera pista
+      const firstTrack = state.currentProject.tracks[0]
+      if (!firstTrack) return
+      const trackClips = firstTrack.clips as VideoClip[]
+      state.setSelectedClips(trackClips)
+    }
+  }
+
   onMounted(() => {
     if (state.isElectron() && typeof window.electronAPI.onConversionProgress === 'function') {
       state.cleanupConversionProgress = window.electronAPI.onConversionProgress((data) => {
@@ -96,6 +114,7 @@ export function useEditorUI(state: BaseEditorState) {
     handleUndo,
     handleRedo,
     handleProxy,
-    handleSelectAll
+    handleSelectAll,
+    handleSelectAllTrack
   }
 }

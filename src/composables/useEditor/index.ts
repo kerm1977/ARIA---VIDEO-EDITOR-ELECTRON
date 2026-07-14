@@ -42,7 +42,8 @@ export function useEditor() {
     handleUndo,
     handleRedo,
     handleProxy,
-    handleSelectAll
+    handleSelectAll,
+    handleSelectAllTrack
   } = useEditorUI(state)
   const {
     handleCutClip
@@ -132,6 +133,7 @@ export function useEditor() {
     handleRedo,
     handleProxy,
     handleSelectAll,
+    handleSelectAllTrack,
     handleCutClip,
     handleSplitClip,
     handleCutAndDelete,

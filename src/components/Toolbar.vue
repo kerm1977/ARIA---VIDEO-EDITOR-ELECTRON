@@ -4,6 +4,7 @@
     <ToolButton :icon="Redo2" title="Rehacer (Ctrl+Alt+Z)" @click="emit('redo')" />
     <ToolButton :icon="Search" title="Importar (Shift+A)" @click="emit('addMedia')" />
     <ToolButton :icon="MousePointer2" title="Seleccionar (A)" @click="emit('selectTool')" />
+    <ToolButton :icon="CheckSquare" title="Seleccionar todo" @click="emit('selectAllTrack')" />
     <div class="toolbar-group">
       <ToolButton :icon="Crop" title="Aspecto" :active="showAspectMenu" @click="toggleAspectMenu" />
       <AspectMenu v-if="showAspectMenu" :aspect-ratio="props.aspectRatio" @select="selectAspect" />
@@ -25,7 +26,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Undo2, Redo2, Search, MousePointer2, Scissors, Type, Gauge, Mic, Music, FlipHorizontal, Zap, Cpu, Crop, RotateCw } from 'lucide-vue-next'
+import { Undo2, Redo2, Search, MousePointer2, CheckSquare, Scissors, Type, Gauge, Mic, Music, FlipHorizontal, Zap, Cpu, Crop, RotateCw } from 'lucide-vue-next'
 import ToolButton from './ToolButton.vue'
 import AspectMenu from './AspectMenu.vue'
 import RotatePanel from './RotatePanel.vue'
@@ -41,6 +42,7 @@ const emit = defineEmits<{
   redo: []
   addMedia: []
   selectTool: []
+  selectAllTrack: []
   cut: []
   text: []
   speed: []

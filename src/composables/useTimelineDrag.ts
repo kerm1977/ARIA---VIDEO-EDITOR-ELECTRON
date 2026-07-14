@@ -136,12 +136,26 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     document.addEventListener('mouseup', stopClipDrag)
   }
 
+  function startClipDragImmediate(e: MouseEvent, clip: any, trackId: string) {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    emit('select-clips', [clip as VideoClip])
+    const lane = (e.currentTarget as HTMLElement).parentElement
+    const rect = lane?.getBoundingClientRect()
+    if (!rect) return
+    dragClip.value = { clip, trackId, startX: e.clientX, startTime: clip.start_time, length: clip.end_time - clip.start_time, laneWidth: rect.width, moved: false, originalStartTime: clip.start_time, dragDirection: null }
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onClipDrag)
+    document.addEventListener('mouseup', stopClipDrag)
+  }
+
   return {
     startDrag,
     startRulerDrag,
     onDrag,
     stopDrag,
     startClipDrag,
+    startClipDragImmediate,
     onClipDrag,
     stopClipDrag
   }

@@ -5,6 +5,7 @@ export interface ToolActions {
   handleUndo: () => void
   handleRedo: () => void
   handleSelect: () => void
+  handleSelectAll: () => void
   handleTogglePlay: () => void
   handleCutClip: () => void
   handleCloseGap: () => void
@@ -45,6 +46,9 @@ export function useEditorShortcuts(state: BaseEditorState, actions: ToolActions)
     }
     if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyA') {
       e.preventDefault(); actions.handleSelect(); return
+    }
+    if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyA') {
+      e.preventDefault(); actions.handleSelectAll(); return
     }
     if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'Space') {
       e.preventDefault(); actions.handleTogglePlay(); return

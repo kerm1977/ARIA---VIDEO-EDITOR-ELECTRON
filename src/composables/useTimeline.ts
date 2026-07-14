@@ -82,6 +82,16 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
     hideContextMenu()
   }
 
+  function selectAllClipsInTrack() {
+    if (!contextMenu.value.clip) return
+    const clip = contextMenu.value.clip
+    const track = props.tracks.find(t => t.clips.some(c => c.id === clip.id))
+    if (!track) return
+    const trackClips = track.clips as VideoClip[]
+    emit('select-clips', trackClips)
+    hideContextMenu()
+  }
+
   onUnmounted(() => {
     document.removeEventListener('mousemove', drag.onDrag)
     document.removeEventListener('mouseup', drag.stopDrag)
@@ -104,7 +114,10 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
     effectiveDuration,
     baseDuration,
     timeMarks,
-    ...drag,
+    startDrag: drag.startDrag,
+    startRulerDrag: drag.startRulerDrag,
+    startClipDrag: drag.startClipDrag,
+    startClipDragImmediate: drag.startClipDragImmediate,
     ...selection,
     showContextMenu,
     hideContextMenu,
@@ -112,6 +125,7 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
     hideClipInfo,
     goToFileLocation,
     createProxy,
-    splitClipAtCursor
+    splitClipAtCursor,
+    selectAllClipsInTrack
   }
 }

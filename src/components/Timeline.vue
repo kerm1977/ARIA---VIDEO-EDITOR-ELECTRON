@@ -2,10 +2,10 @@
   <div class="timeline">
     <TimelineRuler :marks="timeline.timeMarks" @start-drag="timeline.startRulerDrag" />
     <div class="tracks-container">
-      <TimelineTrack v-for="track in props.tracks" :key="track.id" :track="track" :duration="timeline.effectiveDuration" :selectedIds="timeline.selectedClipIds" :boxSelection="timeline.boxSelection" :selectionBoxStyle="timeline.selectionBoxStyle" :onClipMouseDown="timeline.startClipDrag" :onClipContextMenu="timeline.showContextMenu" :onLaneMouseDown="timeline.startBoxSelection" @add-clip="emit('addClip', $event)" />
+      <TimelineTrack v-for="track in props.tracks" :key="track.id" :track="track" :duration="timeline.effectiveDuration" :selectedIds="timeline.selectedClipIds" :boxSelection="timeline.boxSelection" :selectionBoxStyle="timeline.selectionBoxStyle" :onClipMouseDown="timeline.startClipDrag" :onClipDoubleClick="timeline.startClipDragImmediate" :onClipContextMenu="timeline.showContextMenu" :onLaneMouseDown="timeline.startBoxSelection" @add-clip="emit('addClip', $event)" />
     </div>
     <TimelinePlayhead :position="timeline.playheadPosition" @start-drag="timeline.startDrag" />
-    <TimelineContextMenu :visible="timeline.contextMenu.visible" :x="timeline.contextMenu.x" :y="timeline.contextMenu.y" @cut="timeline.splitClipAtCursor" @info="timeline.showClipInfo" @go-to="timeline.goToFileLocation" @proxy="timeline.createProxy" @close="timeline.hideContextMenu" />
+    <TimelineContextMenu :visible="timeline.contextMenu.visible" :x="timeline.contextMenu.x" :y="timeline.contextMenu.y" @cut="timeline.splitClipAtCursor" @select-all-track="timeline.selectAllClipsInTrack" @info="timeline.showClipInfo" @go-to="timeline.goToFileLocation" @proxy="timeline.createProxy" @close="timeline.hideContextMenu" />
     <TimelineClipInfo :visible="timeline.clipInfoModal.visible" :data="timeline.clipInfoModal.data" @close="timeline.hideClipInfo" />
   </div>
 </template>

@@ -1,5 +1,5 @@
 <template>
-  <div class="clip" :class="{ 'audio-clip': props.track.type === 'audio', 'selected': props.selected }" :style="clipStyle" @mousedown.stop="onMouseDown" @contextmenu.prevent.stop="onContextMenu">
+  <div class="clip" :class="{ 'audio-clip': props.track.type === 'audio', 'selected': props.selected }" :style="clipStyle" @mousedown.stop="onMouseDown" @dblclick.stop="onDoubleClick" @contextmenu.prevent.stop="onContextMenu">
     <div class="clip-content">
       <span class="clip-name">{{ clipName }}</span>
       <span class="clip-duration">{{ formatTime(props.clip.end_time - props.clip.start_time) }}</span>
@@ -19,6 +19,7 @@ const props = defineProps<{
   duration: number
   selected: boolean
   onMouseDown: (e: MouseEvent, clip: VideoClip, trackId: string) => void
+  onDoubleClick: (e: MouseEvent, clip: VideoClip, trackId: string) => void
   onContextMenu: (e: MouseEvent, clip: VideoClip) => void
 }>()
 
@@ -27,6 +28,10 @@ const clipName = computed(() => getClipName(props.clip))
 
 function onMouseDown(e: MouseEvent) {
   props.onMouseDown(e, props.clip, props.track.id)
+}
+
+function onDoubleClick(e: MouseEvent) {
+  props.onDoubleClick(e, props.clip, props.track.id)
 }
 
 function onContextMenu(e: MouseEvent) {

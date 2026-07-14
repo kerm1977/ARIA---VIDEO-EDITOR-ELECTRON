@@ -19,6 +19,7 @@ export interface BaseEditorState {
   showProxySettings: boolean
   showImportModal: boolean
   showExportModal: boolean
+  showExitConfirmation: boolean
   timelineZoom: number
   timelineScroll: number
   conversionProgress: number
@@ -46,6 +47,7 @@ export function useEditorState(): BaseEditorState {
   const showProxySettings = ref(false)
   const showImportModal = ref(false)
   const showExportModal = ref(false)
+  const showExitConfirmation = ref(false)
   const timelineZoom = ref(1)
   const timelineScroll = ref(0)
   const conversionProgress = ref(0)
@@ -111,6 +113,7 @@ export function useEditorState(): BaseEditorState {
     showProxySettings,
     showImportModal,
     showExportModal,
+    showExitConfirmation,
     timelineZoom,
     timelineScroll,
     conversionProgress,

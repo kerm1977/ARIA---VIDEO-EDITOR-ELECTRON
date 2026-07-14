@@ -1,5 +1,6 @@
 import { onMounted, onUnmounted } from 'vue'
 import type { BaseEditorState } from './state'
+import type { VideoClip } from '../../stores/project'
 
 export function useEditorUI(state: BaseEditorState) {
   let isResizing = false
@@ -7,8 +8,17 @@ export function useEditorUI(state: BaseEditorState) {
   let startHeight = 0
 
   function goBack() {
+    state.showExitConfirmation = true
+  }
+
+  function confirmExit() {
     state.projectStore.saveProjectToStorage()
     state.projectStore.setCurrentProject(null)
+    state.showExitConfirmation = false
+  }
+
+  function cancelExit() {
+    state.showExitConfirmation = false
   }
 
   function saveProxySettings(settings: any) {
@@ -55,6 +65,12 @@ export function useEditorUI(state: BaseEditorState) {
     state.showProxySettings = true
   }
 
+  function handleSelectAll() {
+    if (!state.currentProject) return
+    const allClips = state.currentProject.tracks.flatMap(t => t.clips) as VideoClip[]
+    state.setSelectedClips(allClips)
+  }
+
   onMounted(() => {
     if (state.isElectron() && typeof window.electronAPI.onConversionProgress === 'function') {
       state.cleanupConversionProgress = window.electronAPI.onConversionProgress((data) => {
@@ -71,12 +87,15 @@ export function useEditorUI(state: BaseEditorState) {
 
   return {
     goBack,
+    confirmExit,
+    cancelExit,
     saveProxySettings,
     startResize,
     onResize,
     stopResize,
     handleUndo,
     handleRedo,
-    handleProxy
+    handleProxy,
+    handleSelectAll
   }
 }

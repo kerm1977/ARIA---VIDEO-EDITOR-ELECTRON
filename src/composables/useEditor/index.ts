@@ -35,11 +35,14 @@ export function useEditor() {
   const { exportProject, handleExport } = useEditorExport(state)
   const {
     goBack,
+    confirmExit,
+    cancelExit,
     saveProxySettings,
     startResize,
     handleUndo,
     handleRedo,
-    handleProxy
+    handleProxy,
+    handleSelectAll
   } = useEditorUI(state)
   const {
     handleCutClip
@@ -79,6 +82,7 @@ export function useEditor() {
     handleUndo,
     handleRedo,
     handleSelect,
+    handleSelectAll,
     handleTogglePlay,
     handleCutClip,
     handleCloseGap,
@@ -120,11 +124,14 @@ export function useEditor() {
     exportProject,
     handleExport,
     goBack,
+    confirmExit,
+    cancelExit,
     saveProxySettings,
     startResize,
     handleUndo,
     handleRedo,
     handleProxy,
+    handleSelectAll,
     handleCutClip,
     handleSplitClip,
     handleCutAndDelete,

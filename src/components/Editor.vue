@@ -46,6 +46,7 @@
     <ProxySettingsModal v-if="state.showProxySettings" :settings="state.proxySettings" @close="state.showProxySettings = false" @save="saveProxySettings" />
     <ImportModal v-if="state.showImportModal" @close="state.showImportModal = false" @import="handleImport" />
     <ExportModal v-if="state.showExportModal" @close="state.showExportModal = false" @export="handleExport" />
+    <ExitConfirmationModal v-if="state.showExitConfirmation" @cancel="cancelExit" @confirm="confirmExit" />
     <div v-if="state.isConverting" class="conversion-progress">
       <div class="progress-overlay">
         <div class="progress-content">
@@ -70,6 +71,7 @@ import Toolbar from './Toolbar.vue'
 import ProxySettingsModal from './ProxySettingsModal.vue'
 import ImportModal from './ImportModal.vue'
 import ExportModal from './ExportModal.vue'
+import ExitConfirmationModal from './ExitConfirmationModal.vue'
 
 const {
   state,
@@ -79,6 +81,8 @@ const {
   handleGuitar,
   handleImport,
   goBack,
+  confirmExit,
+  cancelExit,
   saveProxySettings,
   startResize,
   handleUndo,

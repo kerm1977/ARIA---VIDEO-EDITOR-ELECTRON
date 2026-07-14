@@ -1,6 +1,7 @@
 <template>
-  <div v-if="props.visible" class="context-menu" :style="{ left: props.x + 'px', top: props.y + 'px' }" @click="emit('close')">
+  <div v-if="props.visible" ref="menuRef" class="context-menu" :style="{ left: props.x + 'px', top: props.y + 'px' }" @click.stop>
     <div class="context-menu-item" @click="emit('cut')">Cortar</div>
+    <div class="context-menu-item" @click="emit('select-all-track')">Seleccionar todos en esta fila</div>
     <div class="context-menu-item" @click="emit('info')">Información</div>
     <div class="context-menu-item" @click="emit('go-to')">Ir a ubicación de archivo</div>
     <div class="context-menu-item" @click="emit('proxy')">Crear proxy</div>
@@ -8,8 +9,30 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch, onUnmounted } from 'vue'
+
 const props = defineProps<{ visible: boolean; x: number; y: number }>()
-const emit = defineEmits<{ cut: []; info: []; 'go-to': []; proxy: []; close: [] }>()
+const emit = defineEmits<{ cut: []; 'select-all-track': []; info: []; 'go-to': []; proxy: []; close: [] }>()
+
+const menuRef = ref<HTMLElement | null>(null)
+
+function handleClickOutside(e: MouseEvent) {
+  if (menuRef.value && !menuRef.value.contains(e.target as Node)) {
+    emit('close')
+  }
+}
+
+watch(() => props.visible, (visible) => {
+  if (visible) {
+    document.addEventListener('click', handleClickOutside)
+  } else {
+    document.removeEventListener('click', handleClickOutside)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>

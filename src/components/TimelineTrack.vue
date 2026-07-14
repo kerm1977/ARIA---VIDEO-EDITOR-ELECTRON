@@ -5,7 +5,7 @@
       <button class="track-btn" @click="emit('add-clip', props.track.id)"><Plus class="w-4 h-4" /></button>
     </div>
     <div class="track-lane" @mousedown="onLaneMouseDown">
-      <TimelineClip v-for="clip in props.track.clips" :key="clip.id" :clip="clip as VideoClip" :track="props.track" :duration="props.duration" :selected="props.selectedIds.has(clip.id)" :onMouseDown="props.onClipMouseDown" :onContextMenu="props.onClipContextMenu" />
+      <TimelineClip v-for="clip in props.track.clips" :key="clip.id" :clip="clip as VideoClip" :track="props.track" :duration="props.duration" :selected="props.selectedIds.has(clip.id)" :onMouseDown="props.onClipMouseDown" :onDoubleClick="props.onClipDoubleClick" :onContextMenu="props.onClipContextMenu" />
       <div v-if="props.boxSelection?.visible && props.boxSelection?.trackId === props.track.id" class="selection-box" :style="props.selectionBoxStyle"></div>
     </div>
   </div>
@@ -23,6 +23,7 @@ const props = defineProps<{
   boxSelection?: { visible: boolean; trackId: string; currentX: number; startX: number }
   selectionBoxStyle?: { left: string; width: string }
   onClipMouseDown: (e: MouseEvent, clip: VideoClip, trackId: string) => void
+  onClipDoubleClick: (e: MouseEvent, clip: VideoClip, trackId: string) => void
   onClipContextMenu: (e: MouseEvent, clip: VideoClip) => void
   onLaneMouseDown: (e: MouseEvent, trackId: string) => void
 }>()

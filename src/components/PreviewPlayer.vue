@@ -4,7 +4,7 @@
       <Video class="w-16 h-16 text-gray-600" />
       <p class="text-gray-500 mt-4">{{ placeholderText }}</p>
     </div>
-    <video v-else ref="videoRef" :src="videoSource" :style="videoStyle" class="video-player" @play="onPlay" @pause="onPause" @ended="onEnded" @loadedmetadata="onVideoLoaded" @error="onVideoError" @contextmenu.prevent="showContextMenu" @mousedown="onMouseDown" @click="togglePlay" tabindex="0" />
+    <video v-else ref="videoRef" :src="videoSource" :style="videoStyle" class="video-player" @ended="onEnded" @loadedmetadata="onVideoLoaded" @error="onVideoError" @contextmenu.prevent="showContextMenu" @mousedown="onMouseDown" @click="togglePlay" tabindex="0" />
     <PreviewOverlay :clip="props.currentClip" :currentTool="currentTool" :activeTool="props.activeTool" :info="transformInfo" :showMenu="showMenu" :menuPosition="menuPosition" />
   </div>
 </template>
@@ -63,24 +63,11 @@ const previewStyle = computed(() => {
 function onVideoLoaded(e: Event) {
   if (e.target !== videoRef.value || !videoRef.value || !props.currentClip) return
   setVideoTime(props.currentTime ?? 0, props.currentClip)
-  if (props.isPlaying) {
-    videoRef.value.play().catch(err => console.error('Play error:', err))
-  }
 }
 
 function onVideoError(e: Event) { console.error('Video error:', e) }
-function onPlay(e: Event) {
-  if (e.target !== videoRef.value) return
-  emit('playStateChange', true)
-}
-function onPause(e: Event) {
-  if (e.target !== videoRef.value) return
-  if (videoRef.value?.ended) return
-  emit('playStateChange', false)
-}
 function onEnded(e: Event) {
   if (e.target !== videoRef.value) return
-  // playback loop continues in editor
 }
 
 function setVideoTime(globalTime: number, clip: VideoClip) {
@@ -130,14 +117,23 @@ watch(() => props.currentClip, async (clip) => {
   await resolveVideoSource(clip)
   if (clip && videoRef.value && videoSource.value) {
     setVideoTime(props.currentTime ?? 0, clip)
-    if (props.isPlaying) videoRef.value.play().catch(err => console.error('Play error:', err))
   }
 })
 
-watch(() => props.isPlaying, (playing) => {
-  if (!videoRef.value) return
-  if (playing) videoRef.value.play().catch(err => console.error('Play error:', err))
-  else videoRef.value.pause()
+watch(() => props.isPlaying, (playing, prevPlaying) => {
+  if (!videoRef.value || playing === prevPlaying) return
+  
+  const video = videoRef.value
+  
+  if (playing && video.paused) {
+    video.play().catch(err => {
+      if (err.name !== 'AbortError') {
+        console.error('Play error:', err)
+      }
+    })
+  } else if (!playing && !video.paused) {
+    video.pause()
+  }
 })
 
 defineExpose({ seekTo, togglePlay, skipForward, skipBackward })

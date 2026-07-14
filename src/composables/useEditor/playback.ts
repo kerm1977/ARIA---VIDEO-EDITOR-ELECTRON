@@ -4,6 +4,8 @@ import { onUnmounted } from 'vue'
 export function useEditorPlayback(state: BaseEditorState) {
   let raf = 0
   let last = performance.now()
+  let lastUpdateTime = 0
+  const UPDATE_INTERVAL = 50 // Update currentTime every 50ms (20fps)
 
   function tick(now: number) {
     const delta = (now - last) / 1000
@@ -11,7 +13,11 @@ export function useEditorPlayback(state: BaseEditorState) {
     if (state.isPlaying && state.currentProject) {
       const duration = state.currentProject.duration || 0
       if (state.currentTime < duration) {
-        state.currentTime = Math.min(state.currentTime + delta, duration)
+        // Only update state.currentTime at intervals to avoid overwhelming Vue reactivity
+        if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+          state.currentTime = Math.min(state.currentTime + delta, duration)
+          lastUpdateTime = now
+        }
       } else {
         state.isPlaying = false
       }
@@ -24,10 +30,7 @@ export function useEditorPlayback(state: BaseEditorState) {
 
   function handleTogglePlay() {
     if (!state.currentProject) return
-    const clip = state.previewClip || state.findClipAtOrAfter(state.currentTime)
-    if (clip && !state.previewClip) {
-      state.currentTime = clip.start_time
-    }
+    // Don't jump to clip start - continue from current position
     state.videoPreview?.togglePlay()
   }
 

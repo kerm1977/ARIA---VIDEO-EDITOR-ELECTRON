@@ -3,7 +3,7 @@ import { useTimelineDrag } from './useTimelineDrag'
 import { useTimelineSelection } from './useTimelineSelection'
 import type { TimelineTrack, VideoClip } from '../stores/project'
 
-export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; currentTime: number; isPlaying: boolean; selectedClips?: VideoClip[]; timelineZoom?: number }, emit: {
+export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; currentTime: number; isPlaying: boolean; selectedClips?: VideoClip[] }, emit: {
   (e: 'addClip', trackId: string): void
   (e: 'select-clips', clips: VideoClip[]): void
   (e: 'timeUpdate', time: number): void
@@ -16,7 +16,7 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
   const contextMenu = ref({ visible: false, x: 0, y: 0, clip: null as VideoClip | null, cutTime: 0 })
   const clipInfoModal = ref({ visible: false, data: null as VideoClip | null })
 
-  const baseDuration = computed(() => {
+  const effectiveDuration = computed(() => {
     let maxEnd = 0
     for (const track of props.tracks) {
       for (const clip of track.clips) {
@@ -24,11 +24,6 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
       }
     }
     return Math.max(props.duration || 0, maxEnd, 60)
-  })
-
-  const effectiveDuration = computed(() => {
-    const zoom = props.timelineZoom || 1
-    return baseDuration.value / zoom
   })
 
   const timeMarks = computed(() => {
@@ -46,7 +41,7 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
     return marks
   })
 
-  const drag = useTimelineDrag(props, emit, { playheadPosition, isDragging, effectiveDuration, baseDuration })
+  const drag = useTimelineDrag(props, emit, { playheadPosition, isDragging, effectiveDuration })
   const selection = useTimelineSelection(props, emit, effectiveDuration)
 
   function showContextMenu(event: MouseEvent, clip: any) {
@@ -112,7 +107,6 @@ export function useTimeline(props: { tracks: TimelineTrack[]; duration: number; 
     contextMenu,
     clipInfoModal,
     effectiveDuration,
-    baseDuration,
     timeMarks,
     startDrag: drag.startDrag,
     startRulerDrag: drag.startRulerDrag,

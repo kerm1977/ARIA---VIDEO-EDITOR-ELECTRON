@@ -8,6 +8,7 @@ export interface ToolActions {
   handleTogglePlay: () => void
   handleCutClip: () => void
   handleCloseGap: () => void
+  handleRemoveAllGaps: () => void
   handleCutAndDelete: () => void
   handleDeleteSelected: () => void
   handleImportVideo: () => void
@@ -55,7 +56,7 @@ export function useEditorShortcuts(state: BaseEditorState, actions: ToolActions)
       e.preventDefault(); actions.handleCloseGap(); return
     }
     if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyW') {
-      e.preventDefault(); actions.handleCutAndDelete(); return
+      e.preventDefault(); actions.handleRemoveAllGaps(); return
     }
     if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyD') {
       e.preventDefault(); actions.handleDeleteSelected(); return

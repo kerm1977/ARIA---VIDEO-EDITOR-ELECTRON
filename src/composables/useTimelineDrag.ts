@@ -13,7 +13,7 @@ interface TimelineEmit {
 }
 
 export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state: { playheadPosition: { value: number }; isDragging: { value: boolean }; effectiveDuration: { value: number }; baseDuration: { value: number } }) {
-  const dragClip = ref<{ clip: any | null; trackId: string; startX: number; startTime: number; length: number; laneWidth: number; moved: boolean } | null>(null)
+  const dragClip = ref<{ clip: any | null; trackId: string; startX: number; startTime: number; length: number; laneWidth: number; moved: boolean; originalStartTime: number; dragDirection: 'left' | 'right' | null } | null>(null)
 
   function onDrag(e: MouseEvent) {
     if (!state.isDragging.value) return
@@ -55,12 +55,57 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     s.clip.start_time = newStart
     s.clip.end_time = newStart + s.length
     s.moved = true
+    
+    if (deltaX > 0) {
+      s.dragDirection = 'right'
+    } else if (deltaX < 0) {
+      s.dragDirection = 'left'
+    }
+  }
+
+  function checkOverlap(clip: any, trackId: string, newStart: number, newEnd: number): boolean {
+    const track = props.tracks.find(t => t.id === trackId)
+    if (!track) return false
+    for (const otherClip of track.clips) {
+      if (otherClip.id === clip.id) continue
+      if (newStart < otherClip.end_time && newEnd > otherClip.start_time) {
+        return true
+      }
+    }
+    return false
+  }
+
+  function findSnapPosition(clip: any, trackId: string, newStart: number, clipLength: number, dragDirection: 'left' | 'right' | null): number {
+    const track = props.tracks.find(t => t.id === trackId)
+    if (!track) return newStart
+
+    const otherClips = track.clips.filter(c => c.id !== clip.id).sort((a, b) => a.start_time - b.start_time)
+    const newEnd = newStart + clipLength
+
+    for (const otherClip of otherClips) {
+      if (newStart < otherClip.end_time && newEnd > otherClip.start_time) {
+        if (dragDirection === 'right') {
+          return otherClip.end_time
+        } else if (dragDirection === 'left') {
+          return otherClip.start_time - clipLength
+        }
+      }
+    }
+    return newStart
   }
 
   function stopClipDrag() {
     if (dragClip.value && dragClip.value.clip) {
       if (dragClip.value.moved) {
-        emit('move-clip', dragClip.value.clip.id, dragClip.value.clip.start_time)
+        const hasOverlap = checkOverlap(dragClip.value.clip, dragClip.value.trackId, dragClip.value.clip.start_time, dragClip.value.clip.end_time)
+        if (hasOverlap) {
+          const snapPosition = findSnapPosition(dragClip.value.clip, dragClip.value.trackId, dragClip.value.clip.start_time, dragClip.value.length, dragClip.value.dragDirection)
+          dragClip.value.clip.start_time = snapPosition
+          dragClip.value.clip.end_time = snapPosition + dragClip.value.length
+          emit('move-clip', dragClip.value.clip.id, snapPosition)
+        } else {
+          emit('move-clip', dragClip.value.clip.id, dragClip.value.clip.start_time)
+        }
       }
       dragClip.value = null
     }
@@ -85,7 +130,7 @@ export function useTimelineDrag(props: TimelineProps, emit: TimelineEmit, state:
     const lane = (e.currentTarget as HTMLElement).parentElement
     const rect = lane?.getBoundingClientRect()
     if (!rect) return
-    dragClip.value = { clip, trackId, startX: e.clientX, startTime: clip.start_time, length: clip.end_time - clip.start_time, laneWidth: rect.width, moved: false }
+    dragClip.value = { clip, trackId, startX: e.clientX, startTime: clip.start_time, length: clip.end_time - clip.start_time, laneWidth: rect.width, moved: false, originalStartTime: clip.start_time, dragDirection: null }
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onClipDrag)
     document.addEventListener('mouseup', stopClipDrag)

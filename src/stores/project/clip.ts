@@ -150,3 +150,29 @@ export function closeGap(state: ProjectState, pushHistory: () => void, time: num
   saveProjectToStorage(state)
   pushHistory()
 }
+
+export function removeAllGaps(state: ProjectState, pushHistory: () => void) {
+  if (!state.currentProject.value) return
+  let changed = false
+  for (const track of state.currentProject.value.tracks) {
+    const sorted = [...track.clips].sort((a, b) => a.start_time - b.start_time)
+    if (sorted.length === 0) continue
+    
+    let current_position = 0
+    for (const clip of sorted) {
+      const clip_duration = clip.end_time - clip.start_time
+      if (clip.start_time !== current_position) {
+        clip.start_time = current_position
+        clip.end_time = current_position + clip_duration
+        changed = true
+      }
+      current_position += clip_duration
+    }
+  }
+  if (!changed) return
+  updateProjectDuration(state)
+  state.currentProject.value.modified_at = new Date().toISOString()
+  syncProjectList(state)
+  saveProjectToStorage(state)
+  pushHistory()
+}

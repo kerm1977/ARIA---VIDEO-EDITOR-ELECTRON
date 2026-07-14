@@ -6,5 +6,10 @@ export function useGapTool(state: BaseEditorState) {
     state.projectStore.closeGap(state.currentTime)
   }
 
-  return { handleCloseGap }
+  function handleRemoveAllGaps() {
+    if (!state.projectStore.currentProject) return
+    state.projectStore.removeAllGaps()
+  }
+
+  return { handleCloseGap, handleRemoveAllGaps }
 }

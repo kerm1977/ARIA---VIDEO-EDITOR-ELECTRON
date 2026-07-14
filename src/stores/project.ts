@@ -6,7 +6,7 @@ import { saveProjectToStorage, updateProjectDuration, setProjectAspectRatio } fr
 import { undo, redo, pushHistory } from './project/history'
 import { getVideoMetadata, getAudioMetadata, generateProxy, convertVideo, exportVideo } from './project/media'
 import {
-  addClipToTrack, deleteClip, splitClip, moveClip, cutAndDelete, closeGap
+  addClipToTrack, deleteClip, splitClip, moveClip, cutAndDelete, closeGap, removeAllGaps
 } from './project/clip'
 import { setClipRotation, setClipScale, setClipPosition, setClipMirror } from './project/transform'
 
@@ -153,6 +153,7 @@ export const useProjectStore = defineStore('project', () => {
     moveClip: (clipId: string, newStart: number) => moveClip(state, _pushHistory, clipId, newStart),
     cutAndDelete: (clipId: string, cutTime: number) => cutAndDelete(state, _pushHistory, clipId, cutTime),
     closeGap: (time: number) => closeGap(state, _pushHistory, time),
+    removeAllGaps: () => removeAllGaps(state, _pushHistory),
     updateProjectDuration: () => updateProjectDuration(state),
     setProjectAspectRatio: (ratio: string) => setProjectAspectRatio(state, _pushHistory, ratio),
     setClipRotation: (clipId: string, angle: number, persist?: boolean) => setClipRotation(state, clipId, angle, persist),

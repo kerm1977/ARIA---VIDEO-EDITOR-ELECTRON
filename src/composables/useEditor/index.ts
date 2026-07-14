@@ -55,7 +55,8 @@ export function useEditor() {
     handleMoveClip
   } = useMoveTool(state)
   const {
-    handleCloseGap
+    handleCloseGap,
+    handleRemoveAllGaps
   } = useGapTool(state)
   const {
     handleRotate,
@@ -81,6 +82,7 @@ export function useEditor() {
     handleTogglePlay,
     handleCutClip,
     handleCloseGap,
+    handleRemoveAllGaps,
     handleCutAndDelete,
     handleDeleteSelected,
     handleImportVideo: importVideo,

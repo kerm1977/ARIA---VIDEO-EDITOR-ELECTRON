@@ -15,7 +15,7 @@
     </header>
     <div class="editor-content">
       <main class="main-panel">
-        <VideoPreview :ref="(el) => { state.videoPreview = el as any }" :current-clip="state.previewClip" :selected-clip="state.selectedClip" :current-time="state.currentTime" :is-playing="state.isPlaying" :aspect-ratio="state.currentProject?.aspectRatio || 'libre'" :active-tool="state.activeTool" @timeUpdate="handleTimeUpdate" @playStateChange="handlePlayStateChange" @rotate="handleRotate" @rotateCommit="handleRotateCommit" @scale="handleScale" @scaleCommit="handleScaleCommit" @position="handlePosition" @positionCommit="handlePositionCommit" @zoomTimeline="handleZoomTimeline" />
+        <VideoPreview :ref="(el) => { state.videoPreview = el as any }" :current-clip="state.previewClip" :selected-clip="state.selectedClip" :current-time="state.currentTime" :is-playing="state.isPlaying" :aspect-ratio="state.currentProject?.aspectRatio || 'libre'" :active-tool="state.activeTool" :has-project="!!state.currentProject" @timeUpdate="handleTimeUpdate" @playStateChange="handlePlayStateChange" @rotate="handleRotate" @rotateCommit="handleRotateCommit" @scale="handleScale" @scaleCommit="handleScaleCommit" @position="handlePosition" @positionCommit="handlePositionCommit" @zoomTimeline="handleZoomTimeline" />
       </main>
     </div>
     <Toolbar

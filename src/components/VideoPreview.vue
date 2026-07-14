@@ -1,7 +1,7 @@
 <template>
   <div class="video-preview">
     <PreviewPlayer ref="playerRef" :current-clip="props.currentClip" :selected-clip="props.selectedClip" :current-time="props.currentTime" :aspect-ratio="props.aspectRatio" :active-tool="props.activeTool" :volume="volume" :is-playing="props.isPlaying" @playStateChange="emit('playStateChange', $event)" @rotate="emit('rotate', $event)" @rotateCommit="emit('rotateCommit', $event)" @scale="emit('scale', $event)" @scaleCommit="emit('scaleCommit', $event)" @position="(x, y) => emit('position', x, y)" @positionCommit="(x, y) => emit('positionCommit', x, y)" />
-    <PreviewControls :current-clip="props.currentClip" :current-time="props.currentTime" :duration="clipDuration" :is-playing="props.isPlaying" :volume="volume" @togglePlay="playerRef?.togglePlay()" @skipForward="playerRef?.skipForward()" @skipBackward="playerRef?.skipBackward()" @volumeChange="volume = $event" @seek="onSeek" />
+    <PreviewControls :current-clip="props.currentClip" :current-time="props.currentTime" :duration="clipDuration" :is-playing="props.isPlaying" :volume="volume" :has-project="props.hasProject" @togglePlay="playerRef?.togglePlay()" @skipForward="playerRef?.skipForward()" @skipBackward="playerRef?.skipBackward()" @volumeChange="volume = $event" @seek="onSeek" />
   </div>
 </template>
 
@@ -18,6 +18,7 @@ const props = defineProps<{
   aspectRatio?: string
   activeTool?: 'rotate' | 'scale' | 'move' | null
   isPlaying?: boolean
+  hasProject?: boolean
 }>()
 
 const emit = defineEmits<{

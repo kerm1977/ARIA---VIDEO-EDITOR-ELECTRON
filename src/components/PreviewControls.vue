@@ -4,9 +4,9 @@
       <span>{{ formatTime(props.currentTime) }}</span>/<span>{{ formatTime(props.duration) }}</span>
     </div>
     <div class="control-buttons">
-      <button class="control-btn" :disabled="!props.currentClip" @click="emit('skipBackward')"><SkipBack class="w-5 h-5" /></button>
-      <button class="control-btn play-btn" :disabled="!props.currentClip" @click="emit('togglePlay')"><Play v-if="!props.isPlaying" class="w-6 h-6" /><Pause v-else class="w-6 h-6" /></button>
-      <button class="control-btn" :disabled="!props.currentClip" @click="emit('skipForward')"><SkipForward class="w-5 h-5" /></button>
+      <button class="control-btn" :disabled="!props.hasProject" @click="emit('skipBackward')"><SkipBack class="w-5 h-5" /></button>
+      <button class="control-btn play-btn" :disabled="!props.hasProject" @click="emit('togglePlay')"><Play v-if="!props.isPlaying" class="w-6 h-6" /><Pause v-else class="w-6 h-6" /></button>
+      <button class="control-btn" :disabled="!props.hasProject" @click="emit('skipForward')"><SkipForward class="w-5 h-5" /></button>
     </div>
     <div class="volume-control" v-if="props.currentClip">
       <Volume2 class="w-5 h-5 text-gray-400" />
@@ -26,6 +26,7 @@ const props = defineProps<{
   duration: number
   isPlaying: boolean
   volume: number
+  hasProject: boolean
 }>()
 
 const emit = defineEmits<{
